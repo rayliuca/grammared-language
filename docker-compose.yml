@@ -1,0 +1,79 @@
+# Docker Compose configuration for Grammared Language
+# This is a placeholder/template for orchestrating the services
+
+version: '3.8'
+
+services:
+  # Triton Inference Server
+  triton-server:
+    build:
+      context: .
+      dockerfile: docker/triton/Dockerfile
+    image: grammared-triton:latest
+    container_name: grammared-triton
+    ports:
+      - "8001:8001"  # gRPC
+      - "8002:8002"  # HTTP
+      - "8003:8003"  # Metrics
+    volumes:
+      - ./triton_server/model_repository:/models:ro
+      - ./config/triton:/config:ro
+    environment:
+      - MODEL_REPOSITORY=/models
+      - LOG_VERBOSE=0
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/v2/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - grammared-network
+    restart: unless-stopped
+
+  # API Service
+  api-service:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    image: grammared-api:latest
+    container_name: grammared-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config/api:/app/config:ro
+      - ./logs:/app/logs
+    environment:
+      - TRITON_HOST=triton-server
+      - TRITON_PORT=8001
+      - API_PORT=8000
+      - LOG_LEVEL=INFO
+    depends_on:
+      triton-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - grammared-network
+    restart: unless-stopped
+
+networks:
+  grammared-network:
+    driver: bridge
+
+# Optional: Add volumes for persistent data
+# volumes:
+#   model-cache:
+#   logs:
