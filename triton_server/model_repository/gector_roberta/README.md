@@ -47,8 +47,8 @@ The model is configured with the following parameters:
 
 - **Max Batch Size**: 8
 - **Backend**: Python
-- **Input**: Text strings
-- **Output**: Corrections, labels, and confidence scores
+- **Input**: Pre-tokenized input_ids and attention_mask (INT64 tensors)
+- **Output**: Raw logits for classification
 - **GPU Support**: Yes (configurable)
 - **Dynamic Batching**: Enabled
 
@@ -58,15 +58,15 @@ The model is configured with the following parameters:
 
 | Name | Type | Shape | Description |
 |------|------|-------|-------------|
-| INPUT_TEXT | STRING | [1] | Text to check for grammar errors |
+| input_ids | INT64 | [batch, seq_len] | Tokenized input sequence IDs |
+| attention_mask | INT64 | [batch, seq_len] | Attention mask for the input |
 
 ### Output
 
 | Name | Type | Shape | Description |
 |------|------|-------|-------------|
-| CORRECTIONS | STRING | [1] | JSON array of corrections |
-| LABELS | STRING | [1] | JSON array of predicted labels |
-| CONFIDENCES | STRING | [1] | JSON array of confidence scores |
+| logits_labels | FP32 | [batch, seq_len, num_labels] | Classification logits for each token |
+| logits_d | FP32 | [batch, seq_len, num_labels] | Detection logits (same as logits_labels for GECToR) |
 
 ## Usage Example
 
@@ -75,25 +75,35 @@ The model is configured with the following parameters:
 ```python
 import tritonclient.http as httpclient
 import numpy as np
+from transformers import AutoTokenizer
+
+# Load tokenizer
+tokenizer = AutoTokenizer.from_pretrained("gotutiyan/gector-roberta-base-5k")
 
 # Create Triton client
 client = httpclient.InferenceServerClient(url="localhost:8000")
 
 # Prepare input
 text = "I has a grammar error in this sentence."
-input_data = np.array([text], dtype=np.object_)
+encoded = tokenizer(text, return_tensors="np", padding=True, truncation=True, max_length=512)
 
-# Create input tensor
-inputs = [
-    httpclient.InferInput("INPUT_TEXT", input_data.shape, "BYTES")
-]
-inputs[0].set_data_from_numpy(input_data)
+# Convert to INT64 numpy arrays
+input_ids_np = encoded['input_ids'].astype(np.int64)
+attention_mask_np = encoded['attention_mask'].astype(np.int64)
+
+# Create input tensors
+input_ids_input = httpclient.InferInput("input_ids", input_ids_np.shape, "INT64")
+input_ids_input.set_data_from_numpy(input_ids_np)
+
+attention_mask_input = httpclient.InferInput("attention_mask", attention_mask_np.shape, "INT64")
+attention_mask_input.set_data_from_numpy(attention_mask_np)
+
+inputs = [input_ids_input, attention_mask_input]
 
 # Create output request
 outputs = [
-    httpclient.InferRequestedOutput("CORRECTIONS"),
-    httpclient.InferRequestedOutput("LABELS"),
-    httpclient.InferRequestedOutput("CONFIDENCES")
+    httpclient.InferRequestedOutput("logits_labels"),
+    httpclient.InferRequestedOutput("logits_d")
 ]
 
 # Send request
@@ -104,30 +114,70 @@ response = client.infer(
 )
 
 # Get results
-corrections = response.as_numpy("CORRECTIONS")
-labels = response.as_numpy("LABELS")
-confidences = response.as_numpy("CONFIDENCES")
+logits_labels = response.as_numpy("logits_labels")
+logits_d = response.as_numpy("logits_d")
 
-print("Corrections:", corrections)
-print("Labels:", labels)
-print("Confidences:", confidences)
+# Get predictions
+predictions = np.argmax(logits_labels, axis=-1)
+print("Predictions shape:", predictions.shape)
+print("Logits shape:", logits_labels.shape)
+```
+
+### With gRPC Client (Python)
+
+```python
+import tritonclient.grpc as grpcclient
+import numpy as np
+from transformers import AutoTokenizer
+
+# Load tokenizer
+tokenizer = AutoTokenizer.from_pretrained("gotutiyan/gector-roberta-base-5k")
+
+# Create Triton client
+client = grpcclient.InferenceServerClient(url="localhost:8001")
+
+# Prepare input
+text = "I has a grammar error in this sentence."
+encoded = tokenizer(text, return_tensors="np", padding=True, truncation=True, max_length=512)
+
+# Convert to INT64 numpy arrays
+input_ids_np = encoded['input_ids'].astype(np.int64)
+attention_mask_np = encoded['attention_mask'].astype(np.int64)
+
+# Create input tensors for Triton
+input_ids_input = grpcclient.InferInput("input_ids", input_ids_np.shape, "INT64")
+input_ids_input.set_data_from_numpy(input_ids_np)
+
+attention_mask_input = grpcclient.InferInput("attention_mask", attention_mask_np.shape, "INT64")
+attention_mask_input.set_data_from_numpy(attention_mask_np)
+
+inputs = [input_ids_input, attention_mask_input]
+
+# Define outputs we expect from Triton
+outputs = [
+    grpcclient.InferRequestedOutput("logits_labels"),
+    grpcclient.InferRequestedOutput("logits_d")
+]
+
+# Call Triton server
+response = client.infer(
+    model_name="gector_roberta",
+    inputs=inputs,
+    outputs=outputs
+)
+
+# Get results
+logits_labels = response.as_numpy("logits_labels")
+logits_d = response.as_numpy("logits_d")
 ```
 
 ### With curl
 
+Note: curl example is complex for INT64 tensor inputs. Use the Python client for easier integration.
+
 ```bash
-curl -X POST http://localhost:8000/v2/models/gector_roberta/infer \
-  -H "Content-Type: application/json" \
-  -d '{
-    "inputs": [
-      {
-        "name": "INPUT_TEXT",
-        "datatype": "BYTES",
-        "shape": [1],
-        "data": ["I has a grammar error in this sentence."]
-      }
-    ]
-  }'
+# You need to base64-encode the binary INT64 data
+# It's recommended to use the Python client library instead
 ```
 
 ## Deployment

@@ -3,7 +3,7 @@
 Test script for GECToR model on Triton Inference Server.
 
 This script validates that the model is properly deployed and can handle
-inference requests.
+inference requests with pre-tokenized inputs.
 """
 
 import argparse
@@ -17,6 +17,13 @@ try:
 except ImportError:
     print("Error: tritonclient not installed")
     print("Install with: pip install tritonclient[http]")
+    sys.exit(1)
+
+try:
+    from transformers import AutoTokenizer
+except ImportError:
+    print("Error: transformers not installed")
+    print("Install with: pip install transformers")
     sys.exit(1)
 
 
@@ -42,8 +49,17 @@ def test_model(triton_url="localhost:8000", model_name="gector_roberta"):
         print(f"❌ Failed to connect to Triton server: {e}")
         return False
     
+    # Load tokenizer for preparing inputs
+    print("Loading tokenizer...")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("gotutiyan/gector-roberta-base-5k")
+        print("✅ Tokenizer loaded")
+    except Exception as e:
+        print(f"❌ Failed to load tokenizer: {e}")
+        return False
+    
     # Check server health
-    print("Checking server health...")
+    print("\nChecking server health...")
     try:
         if not client.is_server_live():
             print("❌ Server is not live")
@@ -99,20 +115,32 @@ def test_model(triton_url="localhost:8000", model_name="gector_roberta"):
         print(f"\nTest case {i}: \"{text}\"")
         
         try:
-            # Prepare input
-            input_data = np.array([text], dtype=object)
+            # Tokenize input text
+            encoded = tokenizer(
+                text,
+                return_tensors="np",
+                padding=True,
+                truncation=True,
+                max_length=512
+            )
             
-            # Create input tensor
-            inputs = [
-                httpclient.InferInput("INPUT_TEXT", input_data.shape, "BYTES")
-            ]
-            inputs[0].set_data_from_numpy(input_data)
+            # Extract input_ids and attention_mask as numpy arrays
+            input_ids_np = encoded['input_ids'].astype(np.int64)
+            attention_mask_np = encoded['attention_mask'].astype(np.int64)
             
-            # Create output request
+            # Create input tensors for Triton
+            input_ids_input = httpclient.InferInput("input_ids", input_ids_np.shape, "INT64")
+            input_ids_input.set_data_from_numpy(input_ids_np)
+            
+            attention_mask_input = httpclient.InferInput("attention_mask", attention_mask_np.shape, "INT64")
+            attention_mask_input.set_data_from_numpy(attention_mask_np)
+            
+            inputs = [input_ids_input, attention_mask_input]
+            
+            # Define outputs we expect from Triton
             outputs = [
-                httpclient.InferRequestedOutput("CORRECTIONS"),
-                httpclient.InferRequestedOutput("LABELS"),
-                httpclient.InferRequestedOutput("CONFIDENCES")
+                httpclient.InferRequestedOutput("logits_labels"),
+                httpclient.InferRequestedOutput("logits_d")
             ]
             
             # Send request and measure time
@@ -125,29 +153,17 @@ def test_model(triton_url="localhost:8000", model_name="gector_roberta"):
             inference_time = (time.time() - start_time) * 1000  # Convert to ms
             
             # Get results
-            corrections = response.as_numpy("CORRECTIONS")[0]
-            labels = response.as_numpy("LABELS")[0]
-            confidences = response.as_numpy("CONFIDENCES")[0]
+            logits_labels = response.as_numpy("logits_labels")
+            logits_d = response.as_numpy("logits_d")
             
-            # Parse JSON results
-            if isinstance(corrections, bytes):
-                corrections = corrections.decode('utf-8')
-            if isinstance(labels, bytes):
-                labels = labels.decode('utf-8')
-            if isinstance(confidences, bytes):
-                confidences = confidences.decode('utf-8')
-            
-            corrections_data = json.loads(corrections)
-            labels_data = json.loads(labels)
+            # Get predictions from logits
+            predictions = np.argmax(logits_labels, axis=-1)
             
             print(f"  ✅ Inference successful ({inference_time:.2f}ms)")
-            print(f"  - Corrections found: {len(corrections_data)}")
-            
-            if corrections_data:
-                print(f"  - Sample corrections:")
-                for corr in corrections_data[:3]:  # Show first 3
-                    print(f"    * Token: '{corr['token']}' -> Label: '{corr['label']}' "
-                          f"(confidence: {corr['confidence']:.2f})")
+            print(f"  - Input shape: {input_ids_np.shape}")
+            print(f"  - Logits labels shape: {logits_labels.shape}")
+            print(f"  - Logits d shape: {logits_d.shape}")
+            print(f"  - Predictions shape: {predictions.shape}")
             
         except Exception as e:
             print(f"  ❌ Inference failed: {e}")
