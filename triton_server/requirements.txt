@@ -1,0 +1,17 @@
+# Python dependencies for Triton Python Backend
+# These should be installed in the Triton Docker image
+
+# HuggingFace Transformers for model loading and inference
+transformers>=4.30.0
+
+# PyTorch for model execution
+torch>=2.0.0
+
+# Required for some tokenizers
+sentencepiece>=0.1.99
+
+# Protocol buffers for configuration
+protobuf>=3.20.0
+
+# Additional utilities
+numpy>=1.21.0

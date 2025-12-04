@@ -18,9 +18,12 @@ services:
     volumes:
       - ./triton_server/model_repository:/models:ro
       - ./config/triton:/config:ro
+      - triton-cache:/models/.cache  # HuggingFace model cache
     environment:
       - MODEL_REPOSITORY=/models
       - LOG_VERBOSE=0
+      - TRANSFORMERS_CACHE=/models/.cache
+      - HF_HOME=/models/.cache
     # Uncomment for GPU support
     # deploy:
     #   resources:
@@ -73,7 +76,7 @@ networks:
   grammared-network:
     driver: bridge
 
-# Optional: Add volumes for persistent data
-# volumes:
-#   model-cache:
-#   logs:
+# Volumes for persistent data
+volumes:
+  triton-cache:
+    driver: local

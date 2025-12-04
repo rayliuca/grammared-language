@@ -5,8 +5,8 @@
 # Version should be chosen based on model requirements
 FROM nvcr.io/nvidia/tritonserver:23.10-py3
 
-# Install additional dependencies if needed
-# RUN pip install <additional-packages>
+# Install HuggingFace dependencies for serving transformer models
+RUN pip install --no-cache-dir transformers torch sentencepiece protobuf
 
 # Copy custom backends or configurations if needed
 # COPY triton_server/custom_backends/ /opt/tritonserver/backends/
@@ -18,6 +18,8 @@ FROM nvcr.io/nvidia/tritonserver:23.10-py3
 # Set environment variables
 ENV MODEL_REPOSITORY=/models
 ENV LOG_VERBOSE=0
+ENV TRANSFORMERS_CACHE=/models/.cache
+ENV HF_HOME=/models/.cache
 
 # Expose ports
 # 8000: HTTP
@@ -30,7 +32,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/v2/health/ready || exit 1
 
 # Default command to start Triton server
-# CMD ["tritonserver", "--model-repository=/models"]
-
-# Placeholder command
-CMD echo "Triton Server Dockerfile - Implementation pending"
+CMD ["tritonserver", "--model-repository=/models", "--log-verbose=1"]
