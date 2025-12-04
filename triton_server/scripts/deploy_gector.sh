@@ -4,9 +4,13 @@
 
 set -e
 
+# Determine script directory and repository root
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+
 MODEL_NAME="gector_roberta"
 MODEL_VERSION="1"
-MODEL_REPOSITORY="/home/runner/work/grammared_language/grammared_language/triton_server/model_repository"
+MODEL_REPOSITORY="$REPO_ROOT/triton_server/model_repository"
 MODEL_PATH="$MODEL_REPOSITORY/$MODEL_NAME/$MODEL_VERSION"
 
 echo "=========================================="

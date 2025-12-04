@@ -29,6 +29,7 @@ output [
 ]
 
 # Instance groups - configure based on available resources
+# For GPU deployment:
 instance_group [
   {
     count: 1
@@ -36,6 +37,14 @@ instance_group [
     gpus: [0]
   }
 ]
+
+# For CPU deployment (uncomment the section below and comment GPU section above):
+# instance_group [
+#   {
+#     count: 1
+#     kind: KIND_CPU
+#   }
+# ]
 
 # Python backend requires these parameters
 parameters: {

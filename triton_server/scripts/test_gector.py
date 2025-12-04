@@ -100,7 +100,7 @@ def test_model(triton_url="localhost:8000", model_name="gector_roberta"):
         
         try:
             # Prepare input
-            input_data = np.array([text], dtype=np.object_)
+            input_data = np.array([text], dtype=object)
             
             # Create input tensor
             inputs = [

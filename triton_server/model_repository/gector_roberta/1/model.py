@@ -24,8 +24,7 @@ class TritonPythonModel:
         """
         self.model_config = json.loads(args['model_config'])
         
-        # Get model instance configuration
-        model_instance_name = args['model_instance_name']
+        # Get model instance device configuration
         model_instance_device_id = args['model_instance_device_id']
         
         # Determine device
@@ -33,6 +32,10 @@ class TritonPythonModel:
             self.device = 'cpu'
         else:
             self.device = f'cuda:{model_instance_device_id}'
+        
+        # Initialize attributes for cleanup
+        self.model = None
+        self.tokenizer = None
         
         # Load the HuggingFace model and tokenizer
         model_name = "gotutiyan/gector-roberta-base-5k"
@@ -68,7 +71,7 @@ class TritonPythonModel:
             input_text_data = input_text.as_numpy()
             
             # Decode text from bytes if necessary
-            if input_text_data.dtype == np.object_:
+            if input_text_data.dtype == object:
                 texts = [text.decode('utf-8') if isinstance(text, bytes) else text 
                         for text in input_text_data.flatten()]
             else:
@@ -129,17 +132,17 @@ class TritonPythonModel:
                 # Create output tensors
                 output_corrections = pb_utils.Tensor(
                     "CORRECTIONS",
-                    np.array(all_corrections, dtype=np.object_)
+                    np.array(all_corrections, dtype=object)
                 )
                 
                 output_labels = pb_utils.Tensor(
                     "LABELS",
-                    np.array(all_labels, dtype=np.object_)
+                    np.array(all_labels, dtype=object)
                 )
                 
                 output_confidences = pb_utils.Tensor(
                     "CONFIDENCES",
-                    np.array(all_confidences, dtype=np.object_)
+                    np.array(all_confidences, dtype=object)
                 )
                 
                 # Create inference response
@@ -194,8 +197,10 @@ class TritonPythonModel:
 
     def finalize(self):
         """Clean up resources."""
-        # Clean up model and tokenizer
-        del self.model
-        del self.tokenizer
+        # Clean up model and tokenizer safely
+        if hasattr(self, 'model') and self.model is not None:
+            del self.model
+        if hasattr(self, 'tokenizer') and self.tokenizer is not None:
+            del self.tokenizer
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
