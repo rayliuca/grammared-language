@@ -144,6 +144,23 @@ ENV/
 env.bak/
 venv.bak/
 
+# Model files (large files should be stored with Git LFS or externally)
+*.pt
+*.pth
+*.onnx
+*.pb
+*.h5
+*.bin
+*.safetensors
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
 # Spyder project settings
 .spyderproject
 .spyproject
