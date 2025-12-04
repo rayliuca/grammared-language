@@ -8,7 +8,22 @@ This project provides an advanced grammar error correction system that:
 - Serves as a backend API for LanguageTool using their remote rule feature
 - Leverages ML models (from BERT to LLMs) for sophisticated error detection and correction
 - Uses NVIDIA Triton Inference Server for high-performance model serving
+- Integrates HuggingFace transformer models for state-of-the-art grammar correction
 - Provides fully containerized deployment via Docker
+
+## Current Features
+
+✅ **HuggingFace Model Integration**: Serve transformer models directly from HuggingFace Hub
+- GECToR (gotutiyan/gector-roberta-base-5k) model ready for deployment
+- Python backend for Triton supporting HuggingFace transformers
+- Automatic model caching and loading
+
+✅ **Triton Inference Server Setup**: Production-ready model serving infrastructure
+- Docker-based deployment
+- GPU acceleration support
+- Dynamic batching for improved throughput
+
+✅ **Comprehensive Documentation**: Guides for deployment, development, and model integration
 
 ## Project Goals
 
@@ -87,28 +102,33 @@ LanguageTool Client
 
 - **API Framework**: FastAPI or Flask (Python)
 - **Model Serving**: NVIDIA Triton Inference Server
-- **ML Frameworks**: PyTorch, TensorFlow, ONNX
+- **ML Frameworks**: PyTorch, HuggingFace Transformers, TensorFlow, ONNX
 - **Containerization**: Docker, Docker Compose
-- **Models**: BERT, GPT-based LLMs, custom transformer models
+- **Models**: GECToR, BERT, GPT-based LLMs, custom transformer models
 
 ## Quick Start
-
-> **Note**: This section will be populated once implementation is complete.
 
 ### Prerequisites
 - Docker and Docker Compose
 - NVIDIA GPU (optional, for GPU acceleration)
 - NVIDIA Container Toolkit (for GPU support)
 
-### Setup
+### Setup and Deploy GECToR Model
+
 ```bash
 # Clone the repository
 git clone https://github.com/rayliuca/grammared_language.git
 cd grammared_language
 
-# Build and start services
-docker-compose up --build
+# Build and start Triton server with GECToR model
+docker-compose up --build triton-server
+
+# In another terminal, test the model
+pip install tritonclient[http]
+python triton_server/scripts/test_gector.py
 ```
+
+For detailed instructions, see the [Quick Start Guide](QUICKSTART.md).
 
 ## Development
 
@@ -124,9 +144,12 @@ Contribution guidelines will be provided here.
 ## Documentation
 
 For detailed documentation on specific components, refer to:
+- [Quick Start Guide](QUICKSTART.md)
 - [API Service Documentation](api/README.md)
 - [Triton Server Documentation](triton_server/README.md)
-- [Model Documentation](models/README.md)
+- [GECToR Model Documentation](triton_server/model_repository/gector_roberta/README.md)
+- [HuggingFace Models Integration Guide](docs/HUGGINGFACE_MODELS.md)
+- [Model Documentation](docs/MODELS.md)
 - [Docker Documentation](docker/README.md)
 - [Configuration Documentation](config/README.md)
 - [Full Documentation](docs/README.md)
