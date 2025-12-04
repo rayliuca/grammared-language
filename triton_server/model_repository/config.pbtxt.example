@@ -1,0 +1,68 @@
+# Example model configuration for BERT error detection model
+# Location: triton_server/model_repository/bert_error_detection/config.pbtxt
+
+name: "bert_error_detection"
+platform: "pytorch_libtorch"
+max_batch_size: 32
+
+# Input specification
+input [
+  {
+    name: "input_ids"
+    data_type: TYPE_INT64
+    dims: [-1, 512]  # Variable batch size, fixed sequence length
+  },
+  {
+    name: "attention_mask"
+    data_type: TYPE_INT64
+    dims: [-1, 512]
+  },
+  {
+    name: "token_type_ids"
+    data_type: TYPE_INT64
+    dims: [-1, 512]
+  }
+]
+
+# Output specification
+output [
+  {
+    name: "error_logits"
+    data_type: TYPE_FP32
+    dims: [-1, 512, 2]  # [batch, sequence, num_classes]
+  },
+  {
+    name: "error_probabilities"
+    data_type: TYPE_FP32
+    dims: [-1, 512, 2]
+  }
+]
+
+# Instance groups - how many model instances to run
+instance_group [
+  {
+    count: 2  # Run 2 instances of this model
+    kind: KIND_GPU  # Use GPU for inference
+    gpus: [0]  # Use GPU 0
+  }
+]
+
+# Dynamic batching configuration for better throughput
+dynamic_batching {
+  preferred_batch_size: [8, 16, 32]
+  max_queue_delay_microseconds: 100000  # 100ms max queue delay
+}
+
+# Model optimization
+optimization {
+  cuda {
+    graphs: true
+  }
+}
+
+# Model versioning
+version_policy: {
+  specific {
+    versions: [1]
+  }
+}

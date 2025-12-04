@@ -1,0 +1,63 @@
+# Sample script for deploying models to Triton model repository
+# Location: triton_server/scripts/deploy_model.sh
+
+#!/bin/bash
+
+# This is a placeholder/example script for deploying models to Triton
+
+set -e
+
+MODEL_NAME="${1:-bert_error_detection}"
+MODEL_VERSION="${2:-1}"
+SOURCE_PATH="${3}"
+DEST_PATH="triton_server/model_repository"
+
+echo "Deploying model: $MODEL_NAME version $MODEL_VERSION"
+
+# Create model directory structure
+mkdir -p "$DEST_PATH/$MODEL_NAME/$MODEL_VERSION"
+
+# Copy model files
+if [ -n "$SOURCE_PATH" ]; then
+    echo "Copying model from: $SOURCE_PATH"
+    cp -r "$SOURCE_PATH"/* "$DEST_PATH/$MODEL_NAME/$MODEL_VERSION/"
+else
+    echo "No source path provided, creating placeholder"
+    touch "$DEST_PATH/$MODEL_NAME/$MODEL_VERSION/.gitkeep"
+fi
+
+# Create or validate config.pbtxt
+if [ ! -f "$DEST_PATH/$MODEL_NAME/config.pbtxt" ]; then
+    echo "Creating default config.pbtxt"
+    cat > "$DEST_PATH/$MODEL_NAME/config.pbtxt" << EOF
+name: "$MODEL_NAME"
+platform: "pytorch_libtorch"
+max_batch_size: 32
+
+input [
+  {
+    name: "input_ids"
+    data_type: TYPE_INT64
+    dims: [-1, 512]
+  }
+]
+
+output [
+  {
+    name: "output"
+    data_type: TYPE_FP32
+    dims: [-1, 512, 2]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]
+EOF
+fi
+
+echo "Model deployment complete!"
+echo "Location: $DEST_PATH/$MODEL_NAME/$MODEL_VERSION"
