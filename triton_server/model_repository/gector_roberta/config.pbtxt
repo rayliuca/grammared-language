@@ -17,12 +17,7 @@ input [
 
 output [
   {
-    name: "logits_labels"
-    data_type: TYPE_FP32
-    dims: [-1, -1]
-  },
-  {
-    name: "logits_d"
+    name: "logits"
     data_type: TYPE_FP32
     dims: [-1, -1]
   }

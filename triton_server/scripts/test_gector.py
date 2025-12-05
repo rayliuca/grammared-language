@@ -139,8 +139,7 @@ def test_model(triton_url="localhost:8000", model_name="gector_roberta"):
             
             # Define outputs we expect from Triton
             outputs = [
-                httpclient.InferRequestedOutput("logits_labels"),
-                httpclient.InferRequestedOutput("logits_d")
+                httpclient.InferRequestedOutput("logits")
             ]
             
             # Send request and measure time
@@ -153,16 +152,15 @@ def test_model(triton_url="localhost:8000", model_name="gector_roberta"):
             inference_time = (time.time() - start_time) * 1000  # Convert to ms
             
             # Get results
-            logits_labels = response.as_numpy("logits_labels")
-            logits_d = response.as_numpy("logits_d")
+            logits = response.as_numpy("logits")
             
             # Get predictions from logits
-            predictions = np.argmax(logits_labels, axis=-1)
+            predictions = np.argmax(logits, axis=-1)
             
             print(f"  ✅ Inference successful ({inference_time:.2f}ms)")
             print(f"  - Input shape: {input_ids_np.shape}")
-            print(f"  - Logits labels shape: {logits_labels.shape}")
-            print(f"  - Logits d shape: {logits_d.shape}")
+            print(f"  - Logits shape: {logits.shape}")
+            print(f"  - Logits sample: {logits[-1, :5, 0]}")  # Print sample logits
             print(f"  - Predictions shape: {predictions.shape}")
             
         except Exception as e:

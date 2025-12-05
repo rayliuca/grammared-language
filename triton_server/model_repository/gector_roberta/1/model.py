@@ -4,13 +4,15 @@ GECToR (Grammatical Error Correction: Tag, Not Rewrite) Model for Triton Inferen
 This model uses the HuggingFace transformers library to serve the
 gotutiyan/gector-roberta-base-5k model for grammar error correction.
 """
-
+import logging
 import json
 import numpy as np
 import triton_python_backend_utils as pb_utils
 from transformers import AutoModelForTokenClassification
 import torch
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG) # Set default level to WARNING
 
 class TritonPythonModel:
     """Python model for GECToR grammar error correction."""
@@ -89,23 +91,14 @@ class TritonPythonModel:
                 # For GECToR, we return the same logits for both outputs
                 # logits_labels: the main classification logits
                 # logits_d: detection logits (for GECToR this is the same)
-                logits_labels_np = logits_np
-                logits_d_np = logits_np
-                
-                # Create output tensors
-                output_logits_labels = pb_utils.Tensor(
-                    "logits_labels",
-                    logits_labels_np
-                )
-                
-                output_logits_d = pb_utils.Tensor(
-                    "logits_d",
-                    logits_d_np
+                output_logits = pb_utils.Tensor(
+                    "logits",
+                    logits_np
                 )
                 
                 # Create inference response
                 response = pb_utils.InferenceResponse(
-                    output_tensors=[output_logits_labels, output_logits_d]
+                    output_tensors=[output_logits]
                 )
                 
             except Exception as e:

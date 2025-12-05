@@ -16,9 +16,9 @@ services:
       - TRANSFORMERS_CACHE=/cache
       - HF_HOME=/cache
     ports:
+      - "8000:8000"  # HTTP
       - "8001:8001"  # gRPC
-      - "8002:8002"  # HTTP
-      - "8003:8003"  # Metrics
+      - "8002:8002"  # Metrics
     volumes:
       - ./triton_server/model_repository:/models:ro
       - ./config/triton:/config:ro
@@ -32,7 +32,7 @@ services:
               count: all
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/v2/health/ready"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
       interval: 10s
       timeout: 5s
       retries: 5

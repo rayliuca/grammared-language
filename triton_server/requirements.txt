@@ -3,6 +3,7 @@
 
 # HuggingFace Transformers for model loading and inference
 transformers>=4.30.0
+accelerate
 
 # Required for some tokenizers
 sentencepiece>=0.1.99
@@ -11,4 +12,4 @@ sentencepiece>=0.1.99
 protobuf>=3.20.0
 
 # Additional utilities
-numpy>=1.21.0
+numpy<2.0.0
