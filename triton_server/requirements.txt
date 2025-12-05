@@ -4,9 +4,6 @@
 # HuggingFace Transformers for model loading and inference
 transformers>=4.30.0
 
-# PyTorch for model execution
-torch>=2.0.0
-
 # Required for some tokenizers
 sentencepiece>=0.1.99
 

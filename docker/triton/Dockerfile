@@ -5,8 +5,27 @@
 # Version should be chosen based on model requirements
 FROM nvcr.io/nvidia/tritonserver:23.10-py3
 
-# Install HuggingFace dependencies for serving transformer models
-RUN pip install --no-cache-dir transformers torch sentencepiece protobuf
+# Install uv for fast Python package management
+RUN pip install --no-cache-dir uv
+
+# Create Python backend execution environment
+RUN mkdir -p /opt/tritonserver/python_backend_env && \
+    uv venv /opt/tritonserver/python_backend_env
+
+# Copy requirements file
+COPY triton_server/requirements.txt /tmp/requirements.txt
+
+# install torch packages
+RUN uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+
+# Install dependencies in the Python backend environment using uv
+RUN uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
+    -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
+
+# Also install in the base environment for compatibility
+RUN uv pip install --system transformers sentencepiece protobuf
 
 # Copy custom backends or configurations if needed
 # COPY triton_server/custom_backends/ /opt/tritonserver/backends/
@@ -18,8 +37,8 @@ RUN pip install --no-cache-dir transformers torch sentencepiece protobuf
 # Set environment variables
 ENV MODEL_REPOSITORY=/models
 ENV LOG_VERBOSE=0
-ENV TRANSFORMERS_CACHE=/models/.cache
-ENV HF_HOME=/models/.cache
+ENV TRANSFORMERS_CACHE=/cache
+ENV HF_HOME=/cache
 
 # Expose ports
 # 8000: HTTP

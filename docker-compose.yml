@@ -1,8 +1,6 @@
 # Docker Compose configuration for Grammared Language
 # This is a placeholder/template for orchestrating the services
 
-version: '3.8'
-
 services:
   # Triton Inference Server
   triton-server:
@@ -11,6 +9,12 @@ services:
       dockerfile: docker/triton/Dockerfile
     image: grammared-triton:latest
     container_name: grammared-triton
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - MODEL_REPOSITORY=/models
+      - LOG_VERBOSE=0
+      - TRANSFORMERS_CACHE=/cache
+      - HF_HOME=/cache
     ports:
       - "8001:8001"  # gRPC
       - "8002:8002"  # HTTP
@@ -18,20 +22,15 @@ services:
     volumes:
       - ./triton_server/model_repository:/models:ro
       - ./config/triton:/config:ro
-      - triton-cache:/models/.cache  # HuggingFace model cache
-    environment:
-      - MODEL_REPOSITORY=/models
-      - LOG_VERBOSE=0
-      - TRANSFORMERS_CACHE=/models/.cache
-      - HF_HOME=/models/.cache
-    # Uncomment for GPU support
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+      - triton-cache:/cache  # HuggingFace model cache
+    # shm_size: '1gb'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/v2/health/ready"]
       interval: 10s
