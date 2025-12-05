@@ -66,19 +66,63 @@ See [LanguageTool Integration Guide](docs/LANGUAGETOOL_INTEGRATION.md) for detai
 
 ## Current Status
 
-⚠️ **Note**: This is the initial folder structure and documentation setup. The actual implementation is pending.
-
 ### What's Ready
 - ✅ Project folder structure
 - ✅ Comprehensive documentation
-- ✅ Example configurations
 - ✅ Docker setup templates
+- ✅ GECToR HuggingFace model integration
+- ✅ Triton server configuration for HuggingFace models
 
 ### What's Next
 - ⏳ API service implementation
-- ⏳ Triton model deployment
-- ⏳ ML model integration
+- ⏳ Complete model testing with running Triton server
 - ⏳ LanguageTool connector
+
+## GECToR Model Quick Start
+
+The project now includes support for the GECToR (Grammatical Error Correction: Tag, Not Rewrite) model from HuggingFace.
+
+### Deploy the GECToR Model
+
+```bash
+# Download and prepare the model (optional - Triton will do this on first start)
+cd triton_server/scripts
+./deploy_gector.sh
+```
+
+### Start Triton with GECToR
+
+```bash
+# Build and start Triton server
+docker-compose up --build triton-server
+
+# The GECToR model will be automatically loaded
+# Monitor logs to see the model loading process
+docker logs -f grammared-triton
+```
+
+### Test the Model
+
+Once Triton is running:
+
+```bash
+# Install Triton client
+pip install tritonclient[http]
+
+# Run the test script
+python triton_server/scripts/test_gector.py
+
+# Or specify custom Triton URL
+python triton_server/scripts/test_gector.py --url localhost:8002
+```
+
+### Model Information
+
+- **Model**: gotutiyan/gector-roberta-base-5k
+- **Task**: Grammar Error Correction
+- **Backend**: Python (HuggingFace Transformers)
+- **Documentation**: See [triton_server/model_repository/gector_roberta/README.md](triton_server/model_repository/gector_roberta/README.md)
+- **HuggingFace Integration Guide**: See [docs/HUGGINGFACE_MODELS.md](docs/HUGGINGFACE_MODELS.md)
 
 ## Development Setup
 

@@ -22,6 +22,17 @@ Triton Inference Server provides:
 
 ## Supported Models
 
+### HuggingFace Models
+
+#### GECToR (Grammar Error Correction: Tag, Not Rewrite)
+- **Model**: gotutiyan/gector-roberta-base-5k
+- **Task**: Grammar error correction via sequence tagging
+- **Backend**: Python (HuggingFace Transformers)
+- **Location**: `model_repository/gector_roberta/`
+- **Status**: ✅ Ready for deployment
+
+See [gector_roberta/README.md](model_repository/gector_roberta/README.md) for detailed documentation.
+
 ### BERT-based Models
 - Grammar error detection models
 - Contextual embeddings for language understanding
