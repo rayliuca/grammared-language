@@ -2,7 +2,7 @@
 GECToR (Grammatical Error Correction: Tag, Not Rewrite) Model for Triton Inference Server.
 
 This model uses the HuggingFace transformers library to serve the
-gotutiyan/gector-roberta-base-5k model for grammar error correction.
+gotutiyan/gector-bert-base-cased-5k model for grammar error correction.
 """
 import logging
 import json
@@ -10,6 +10,7 @@ import numpy as np
 import triton_python_backend_utils as pb_utils
 from transformers import AutoModel
 import torch
+from .gector import GECToR
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG) # Set default level to WARNING
@@ -39,19 +40,19 @@ class TritonPythonModel:
         self.model = None
         
         # Load the HuggingFace model
-        model_name = "gotutiyan/gector-roberta-base-5k"
+        model_name = "gotutiyan/gector-bert-base-cased-5k"
+        # model_name = "bert-base-cased"
         
         try:
-            self.model = AutoModel.from_pretrained(model_name)
-
-            # +1 is for $START token for gector
-            self.model.resize_token_embeddings(
-                self.model.config.vocab_size + 1,
-                mean_resizing=False
-            )
-
-            self.model.to(self.device)
-            self.model.eval()
+            self.model = GECToR.from_pretrained(model_name, device_map=self.device)
+            
+            logger.warning(f"Loaded model {model_name}")
+            # logger.warning(f"Model config: {self.model.config}")
+            # self.model.to(self.device)
+            # first_encoder_layer = self.model.encoder.layer[0]
+            # query_weights = first_encoder_layer.attention.self.query.weight
+            # logger.warning(f"First encoder layer query weights: {query_weights}")
+            # self.model.eval()
             
         except Exception as e:
             raise RuntimeError(f"Failed to load model {model_name}: {str(e)}")
@@ -83,29 +84,33 @@ class TritonPythonModel:
                 attention_mask = torch.from_numpy(attention_mask_np).to(self.device)
                 
                 # Run inference
-                with torch.no_grad():
-                    outputs = self.model(
+                gector_output = self.model.forward(
                         input_ids=input_ids,
                         attention_mask=attention_mask
                     )
                 
                 # Get logits
-                logits = outputs.last_hidden_state
+                logits_d = gector_output.logits_d
+                logits_labels = gector_output.logits_labels
                 
                 # Convert logits to numpy
-                logits_np = logits.cpu().numpy().astype(np.float32)
-                
-                # For GECToR, we return the same logits for both outputs
-                # logits_labels: the main classification logits
-                # logits_d: detection logits (for GECToR this is the same)
-                output_logits = pb_utils.Tensor(
-                    "logits",
-                    logits_np
+                logits_labels_np = logits_labels.cpu().detach().numpy().astype(np.float32)
+                logits_d_np = logits_d.cpu().detach().numpy().astype(np.float32)
+                # logger.warning(f"logits_labels_np: {logits_labels_np}")
+                output_logits_labels = pb_utils.Tensor(
+                    "logits_labels",
+                    logits_labels_np
                 )
                 
+                output_logits_d = pb_utils.Tensor(
+                    "logits_d",
+                    logits_d_np
+                )
+                
+                # logger.warning(f"output_logits_d: {output_logits_d}")
                 # Create inference response
                 response = pb_utils.InferenceResponse(
-                    output_tensors=[output_logits]
+                    output_tensors=[output_logits_labels, output_logits_d]
                 )
                 
             except Exception as e:

@@ -121,7 +121,7 @@ git clone https://github.com/rayliuca/grammared_language.git
 cd grammared_language
 
 # Build and start Triton server with GECToR model
-docker-compose up --build triton-server
+docker compose up --build triton-server
 
 # In another terminal, test the model
 pip install tritonclient[http]
