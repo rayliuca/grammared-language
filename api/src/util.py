@@ -42,7 +42,7 @@ class GrammarCorrectionExtractor:
     
     def __init__(self, min_length: int = 1):
         """
-        Initialize the extractor. 
+        Initialize the extractor.  
         
         Args:
             min_length: Minimum length of original text to be replaced (must be > 0)
@@ -72,11 +72,14 @@ class GrammarCorrectionExtractor:
         # Tokenize into words while preserving positions
         orig_tokens, orig_positions = self._tokenize_with_positions(original)
         corr_tokens, corr_positions = self._tokenize_with_positions(fixed_corrected)
-
-        matches = []        
+        
+        matches = []
+        
         # Use SequenceMatcher on tokens
         matcher = SequenceMatcher(None, orig_tokens, corr_tokens)
-        for tag, i1, i2, j1, j2 in matcher. get_opcodes():
+        opcodes = list(matcher. get_opcodes())
+        
+        for idx, (tag, i1, i2, j1, j2) in enumerate(opcodes):
             if tag == 'replace':
                 # Get character positions
                 offset = orig_positions[i1]
@@ -111,8 +114,106 @@ class GrammarCorrectionExtractor:
                             # )
                         )
                     )
+            
+            elif tag == 'insert':
+                # Convert insertion to replacement by including adjacent token
+                # This ensures we meet the min_length requirement
                 
+                # Get the inserted text
+                repl_start = corr_positions[j1]
+                repl_end = corr_positions[j2 - 1] + len(corr_tokens[j2 - 1])
+                inserted_text = fixed_corrected[repl_start:repl_end]
+                
+                # Try to merge with the previous or next token to create a replacement
+                converted = self._convert_insertion_to_replacement(
+                    original, orig_tokens, orig_positions, 
+                    i1, inserted_text, opcodes, idx
+                )
+                
+                if converted:
+                    matches. append(converted)
+        
         return matches
+    
+    def _convert_insertion_to_replacement(self, original: str, orig_tokens: List[str], 
+                                         orig_positions: List[int], insert_pos: int,
+                                         inserted_text: str, opcodes: List, current_idx: int) -> Dict:
+        """
+        Convert an insertion to a replacement by including an adjacent token.
+        
+        Strategy:
+        1. Try to include the next token (insert before next word)
+        2. If no next token, include the previous token (append after previous word)
+        
+        Args:
+            original: Original text
+            orig_tokens: Original tokens
+            orig_positions: Original token positions
+            insert_pos: Position where insertion occurs
+            inserted_text: Text to be inserted
+            opcodes: All opcodes from SequenceMatcher
+            current_idx: Current opcode index
+            
+        Returns:
+            Replacement dict or None if conversion not possible
+        """
+        # Check if there's a next token (prefer inserting before next word)
+        if insert_pos < len(orig_tokens):
+            # Check if the next operation is not already handling this token
+            next_token_used = False
+            if current_idx + 1 < len(opcodes):
+                next_tag, next_i1, _, _, _ = opcodes[current_idx + 1]
+                if next_tag in ('replace', 'delete') and next_i1 == insert_pos:
+                    next_token_used = True
+            
+            if not next_token_used:
+                # Include the next token in the replacement
+                offset = orig_positions[insert_pos]
+                next_token = orig_tokens[insert_pos]
+                length = len(next_token)
+                replacement = inserted_text + " " + next_token
+                
+                return Match(
+                            message="ML-based grammar correction",
+                            suggested_replacements=[
+                                SuggestedReplacement(
+                                    replacement=replacement
+                                )
+                            ],
+                            offset=offset,
+                            length=length,
+                            # rule=Rule(
+                            #     id=rule_id,
+                            #     description=rule_description
+                            # )
+                        )
+        
+        # Otherwise, try to include the previous token
+        if insert_pos > 0:
+            prev_idx = insert_pos - 1
+            
+            # Check if the previous token is already being replaced/deleted
+            prev_token_used = False
+            for other_idx, (other_tag, other_i1, other_i2, _, _) in enumerate(opcodes):
+                if other_idx != current_idx and other_tag in ('replace', 'delete'):
+                    if prev_idx >= other_i1 and prev_idx < other_i2:
+                        prev_token_used = True
+                        break
+            
+            if not prev_token_used:
+                # Include the previous token in the replacement
+                offset = orig_positions[prev_idx]
+                prev_token = orig_tokens[prev_idx]
+                length = len(prev_token)
+                replacement = prev_token + " " + inserted_text
+                
+                return {
+                    'offset': offset,
+                    'length': length,
+                    'replacement': replacement
+                }
+        
+        return None
     
     def _fix_tokenization_mistakes(self, text: str) -> str:
         """
@@ -137,13 +238,13 @@ class GrammarCorrectionExtractor:
         
         # Fix spaces around apostrophes in contractions
         # Pattern: letter + space + ' + space + letter
-        result = re. sub(r"(\w)\s+'\s+(\w)", r"\1'\2", result)
+        result = re.sub(r"(\w)\s+'\s+(\w)", r"\1'\2", result)
         
         # Fix space before punctuation
         # Period
         result = re.sub(r'\s+\.', '. ', result)
         # Comma
-        result = re. sub(r'\s+,', ',', result)
+        result = re.sub(r'\s+,', ',', result)
         # Question mark
         result = re.sub(r'\s+\?', '?', result)
         # Exclamation mark
@@ -154,7 +255,7 @@ class GrammarCorrectionExtractor:
         result = re.sub(r'(\w)\s+:', r'\1:', result)
         
         # Fix space after opening quotes and before closing quotes
-        result = re. sub(r'"\s+', '"', result)
+        result = re.sub(r'"\s+', '"', result)
         result = re.sub(r'\s+"', '"', result)
         
         # Fix spaces around hyphens in compound words
