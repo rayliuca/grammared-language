@@ -64,19 +64,19 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
         length=match.length,
         id="gector",
         sub_id="",
-        suggestions=[r.value for r in (match.replacements or [])],
+        suggestions=match.suggestions,
         ruleDescription=match.rule.description,
         matchDescription=match.message,
         matchShortDescription=match.shortMessage or match.message,
         url="",
         suggestedReplacements=[
             ml_server_pb2.SuggestedReplacement(
-                replacement=r.value,
+                replacement=r.replacement,
                 description="",
                 suffix="",
                 confidence=0.8
             )
-            for r in (match.replacements or [])
+            for r in (match.suggested_replacements or [])
         ],
         autoCorrect=True,
         type=ml_server_pb2.Match.MatchType.Other,  # Grammar errors are "Other" type

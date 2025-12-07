@@ -13,9 +13,17 @@ class IgnoreRange(BaseModel):
     length: int = Field(ge=0)
 
 
-class Replacement(BaseModel):
-    value: str
-
+class SuggestedReplacement(BaseModel):
+    replacement: str = ""
+    description: str|None = None
+    suffix: str|None = None  # Value shown in the UI after the replacement (but not part of it).
+    confidence: float|None = None  # from 0 (lowest) to 1 (highest)
+    suggestion_type: int = 0  #
+    # enum SuggestionType {
+    #     Default = 0;
+    #     Translation = 1;
+    #     Curated = 2;
+    # }
 
 class Context(BaseModel):
     text: str
@@ -51,12 +59,12 @@ class Rule(BaseModel):
 
 class Match(BaseModel):
     message: str
-    context: Context
     offset: int = Field(ge=0)
     length: int = Field(ge=0)
     rule: Rule
     shortMessage: Optional[str] = None
-    replacements: Optional[List[Replacement]] = None
+    suggestions: str|None = None
+    suggested_replacements: Optional[List[SuggestedReplacement]] = None
     
     model_config = ConfigDict(extra="allow")
 
