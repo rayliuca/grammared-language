@@ -58,10 +58,10 @@ class Rule(BaseModel):
 
 
 class Match(BaseModel):
-    message: str
     offset: int = Field(ge=0)
     length: int = Field(ge=0)
-    rule: Rule
+    message: str|None = None
+    rule: Rule|None = None
     shortMessage: Optional[str] = None
     suggestions: str|None = None
     suggested_replacements: Optional[List[SuggestedReplacement]] = None

@@ -7,82 +7,6 @@ import re
 
 from .output_models import LanguageToolRemoteResult, Match, Context, Rule, SuggestedReplacement
 
-def get_diff(sequence1, sequence2, rule_id="gector", rule_description="ML-based result."):
-    s = difflib.SequenceMatcher(None, sequence1, sequence2)
-    
-    matches = []
-    for opcode, i1, i2, j1, j2 in s.get_opcodes():
-        if opcode == "equal":
-            continue
-        elif opcode in ("replace"):
-            offset = i1
-            length = i2-i1
-            matches.append(
-                Match(
-                    message=opcode,
-                    suggested_replacements=[
-                        SuggestedReplacement(
-                            replacement=sequence2[j1:j2]
-                        )
-                    ],
-                    offset=offset,
-                    length=length,
-                    rule=Rule(
-                        id=rule_id,
-                        description=rule_description
-                    )
-                )
-            )
-        elif opcode == "delete":
-            length = i2-i1 + 1
-            if i2 < len(sequence1)-1:              
-                offset = i1
-                suggestion = sequence2[j1:j2] + sequence1[i2]
-            else:
-                offset = i1 - 1
-                suggestion = sequence1[offset] + sequence2[j1:j2]
-            
-            
-            matches.append(
-                Match(
-                    message=opcode,
-                    suggested_replacements=[
-                        SuggestedReplacement(replacement=suggestion)
-                    ],
-                    offset=offset,
-                    length=length,
-                    rule=Rule(
-                        id=rule_id,
-                        description=rule_description
-                    )
-                )
-            )
-        elif opcode == "insert":
-            length = 1
-            if i1 < len(sequence1)-1:              
-                offset = i1
-            else:
-                offset = i1 - 1
-            suggestion = sequence1[offset] + sequence2[j1:j2]
-            
-            matches.append(
-                Match(
-                    message=opcode,
-                    suggested_replacements=[
-                        SuggestedReplacement(replacement=suggestion)
-                    ],
-                    offset=offset,
-                    length=length,
-                    rule=Rule(
-                        id=rule_id,
-                        description=rule_description
-                    )
-                )
-            )
-    print(matches)
-    return matches
-
-
 class SimpleCacheStore:
     """Thread-safe in-memory cache store."""
     def __init__(self, max_size=10000):
@@ -113,9 +37,6 @@ class SimpleCacheStore:
 Grammar Error Correction - Extract Replacements
 Extracts replacements between original and corrected text for grammar correction.  
 """
-
-
-
 class GrammarCorrectionExtractor:
     """Extract replacement operations from original to corrected text."""
     
@@ -128,7 +49,7 @@ class GrammarCorrectionExtractor:
         """
         self.min_length = max(1, min_length)  # Ensure at least 1
     
-    def extract_replacements(self, original: str, corrected: str) -> List[Dict[str, any]]:
+    def extract_replacements(self, original: str, corrected: str, fix_tokenization=True) -> List[Match]:
         """
         Extract replacements needed to transform original text to corrected text.
         
@@ -143,17 +64,18 @@ class GrammarCorrectionExtractor:
             - replacement: str (corrected text to insert)
         """
         # Pre-process to fix common tokenization mistakes in corrected text
-        fixed_corrected = self._fix_tokenization_mistakes(corrected)
+        if fix_tokenization:
+            fixed_corrected = self._fix_tokenization_mistakes(corrected)
+        else:
+            fixed_corrected = corrected
         
         # Tokenize into words while preserving positions
         orig_tokens, orig_positions = self._tokenize_with_positions(original)
         corr_tokens, corr_positions = self._tokenize_with_positions(fixed_corrected)
-        
-        replacements = []
-        
+
+        matches = []        
         # Use SequenceMatcher on tokens
         matcher = SequenceMatcher(None, orig_tokens, corr_tokens)
-        
         for tag, i1, i2, j1, j2 in matcher. get_opcodes():
             if tag == 'replace':
                 # Get character positions
@@ -173,13 +95,24 @@ class GrammarCorrectionExtractor:
                 # - length must be >= min_length
                 # - replacement cannot be empty
                 if length >= self.min_length and replacement != "":
-                    replacements. append({
-                        'offset': offset,
-                        'length': length,
-                        'replacement': replacement
-                    })
-        
-        return replacements
+                    matches.append(
+                        Match(
+                            message="ML-based grammar correction",
+                            suggested_replacements=[
+                                SuggestedReplacement(
+                                    replacement=replacement
+                                )
+                            ],
+                            offset=offset,
+                            length=length,
+                            # rule=Rule(
+                            #     id=rule_id,
+                            #     description=rule_description
+                            # )
+                        )
+                    )
+                
+        return matches
     
     def _fix_tokenization_mistakes(self, text: str) -> str:
         """

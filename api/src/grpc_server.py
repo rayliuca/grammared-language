@@ -12,7 +12,7 @@ import time
 from transformers import AutoTokenizer
 from gector import predict, load_verb_dict
 from gector import GECToRTriton
-from .util import get_diff, SimpleCacheStore
+from .util import GrammarCorrectionExtractor, SimpleCacheStore
 from .output_models import LanguageToolRemoteResult
 
 # Import generated protobuf and gRPC modules (generated from ml_server.proto)
@@ -30,7 +30,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_id)
 encode, decode = load_verb_dict('data/verb-form-vocab.txt')
 analyze_cache_store = SimpleCacheStore()
 process_cache_store = SimpleCacheStore()
-
+grammar_correction_extractor = GrammarCorrectionExtractor()
 
 def pred_gector(src: str) -> LanguageToolRemoteResult:
     """
@@ -48,8 +48,10 @@ def pred_gector(src: str) -> LanguageToolRemoteResult:
         n_iteration=5,
         batch_size=2,
     )
-    print(corrected)
-    matches = get_diff(src, corrected[0])
+    print(src)
+    print(corrected[0])
+    matches = grammar_correction_extractor.extract_replacements(src, corrected[0])
+    print(matches)
     return LanguageToolRemoteResult(
         language="English",
         languageCode="en-US",
@@ -65,7 +67,7 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
         id="gector",
         sub_id="",
         suggestions=match.suggestions,
-        ruleDescription=match.rule.description,
+        ruleDescription=match.rule.description if match.rule else None,
         matchDescription=match.message,
         matchShortDescription=match.shortMessage or match.message,
         url="",
@@ -91,7 +93,7 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
             ) if match.rule.category else None,
             isPremium=False,
             tags=[]
-        )
+        ) if match.rule else None
     )
 
 

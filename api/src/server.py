@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from transformers import AutoTokenizer
 from gector import predict, load_verb_dict
 from gector import GECToRTriton
-from .util import get_diff, SimpleCacheStore
+from .util import GrammarCorrectionExtractor, SimpleCacheStore
 from .output_models import LanguageToolRemoteResult
 
 # FastAPI imports
@@ -24,11 +24,12 @@ cache_store = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global triton_model, tokenizer, encode, decode, cache_store
+    global triton_model, tokenizer, encode, decode, cache_store, grammar_correction_extractor
     print(f"[STARTUP] Starting initialization at {time.time() * 1000}")
 
     cache_store = SimpleCacheStore()
-    
+    grammar_correction_extractor = GrammarCorrectionExtractor()
+
     model_id = "gotutiyan/gector-bert-base-cased-5k"
     print(f"[STARTUP] Loading model at {time.time() * 1000}")
     t0 = time.time()
@@ -68,7 +69,7 @@ def pred_gector(src: str) -> LanguageToolRemoteResult:
         batch_size=2,
     )
     print(corrected)
-    matches = get_diff(src, corrected[0])
+    matches = grammar_correction_extractor.extract_replacements(src, corrected[0])
     return LanguageToolRemoteResult(
         language="English",
         languageCode="en-US",
