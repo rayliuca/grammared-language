@@ -12,6 +12,24 @@ ml_server.proto definition.
 import subprocess
 import sys
 from pathlib import Path
+import re
+
+def fix_relative_imports(grpc_gen_dir):
+    """Convert absolute imports to relative imports in generated files."""
+    py_files = list(grpc_gen_dir.glob("*.py"))
+    
+    for file_path in py_files:
+        content = file_path.read_text()
+        # Replace "import ml_server_pb2" with "from . import ml_server_pb2"
+        updated_content = re.sub(
+            r'^import ml_server_pb2 as',
+            'from . import ml_server_pb2 as',
+            content,
+            flags=re.MULTILINE
+        )
+        if updated_content != content:
+            file_path.write_text(updated_content)
+            print(f"✓ Fixed imports in {file_path.name}")
 
 def regenerate_grpc():
     """Regenerate gRPC code from ml_server.proto."""
@@ -42,6 +60,9 @@ def regenerate_grpc():
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print("✓ gRPC code regenerated successfully")
+        
+        # Fix relative imports
+        fix_relative_imports(grpc_gen_dir)
                 
         if result.stdout:
             print(result.stdout)
