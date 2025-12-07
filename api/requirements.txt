@@ -1,0 +1,11 @@
+# Python dependencies for the remote Language Tools API
+# These should be installed in the API Docker image
+
+fastapi
+uvicorn
+pydantic
+
+# Additional utilities
+numpy<2.0.0
+
+git+https://github.com/rayliuca/gector.git
