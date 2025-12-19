@@ -24,8 +24,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Model initialization
-model_id = "gotutiyan/gector-bert-base-cased-5k"
-triton_model = GECToRTriton.from_pretrained(model_id, model_name="gector_bert")
+model_id = "gotutiyan/gector-deberta-large-5k"
+triton_model = GECToRTriton.from_pretrained(model_id, model_name="gector_deberta_large")
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 encode, decode = load_verb_dict('data/verb-form-vocab.txt')
 analyze_cache_store = SimpleCacheStore()

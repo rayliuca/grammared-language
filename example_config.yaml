@@ -1,0 +1,79 @@
+
+# used to build triton model repos
+triton:
+    triton_server: # container name
+        # simple Triton server settings
+        triton_port: 50051
+        device: gpu  # (cpu | gpu)
+
+        # Docker settings
+        image: # grammared-triton:latest
+        environment: 
+            # default:
+            # - NVIDIA_VISIBLE_DEVICES=all
+            # - MODEL_REPOSITORY=/models
+            # - LOG_VERBOSE=0
+            # - TRANSFORMERS_CACHE=/cache
+            # - HF_HOME=/cache
+        ports:
+            # default:
+            # - "8000:8000"  # HTTP
+            # - "8001:8001"  # gRPC
+            # - "8002:8002"  # Metrics
+        volumes:
+            # default:
+            # - ./triton_server/model_repository:/models:ro
+            # - ./config/triton:/config:ro
+            # - triton-cache:/cache  # HuggingFace model cache
+        healthcheck:
+            # default:
+            #     test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+            #     interval: 10s
+            #     timeout: 5s
+            #     retries: 5
+            #     start_period: 30s
+        networks:
+        restart:
+
+models:
+    # Model selection and configuration
+    name:
+        type: (gector | coedit | deliterater | rule_llm)
+        backend: (triton | local)
+        triton_model_name: string  # Required if backend is triton
+        triton_hostname: triton-server
+        triton_port: 50051
+        model_kwargs:  # Additional model-specific arguments
+        configs:
+        rule_generation:
+            model: smollm2 # the model decleared in this config that is of the type `rule_llm`
+    gector_deberta_large:
+        type: gector
+        backend: triton
+        huggingface_model_name: "gotutiyan/gector-deberta-large-5k"
+        triton_model_name: gector_deberta_large
+        triton_hostname: triton-server
+        triton_port: 50051
+        configs:
+            cache_max_size: 10000
+
+    smollm2_135m_rule_generator:
+        type: rule_llm
+        backend: triton
+        huggingface_model_name: "HuggingFaceTB/SmolLM2-135M-Instruct"
+        triton_model_name: smollm2_135m
+        triton_hostname: triton-server
+        triton_port: 50051
+        configs:
+            system_prompt: |
+                You are an expert in English grammar correction. Given a sentence, you will identify grammatical errors and provide corrected versions along with explanations.
+            user_prompt: |
+                Original Sentence: "{sentence}"
+                Corrected Sentence: "{corrected_sentence}"
+                corrections_made: "{original}" -> "{corrected}"
+                write a brief explanation (3 to 10 words) of the correction made.
+            max_retries: 3
+        model_kwargs:
+            temperature: 0.7
+            max_new_tokens: 25
+        

@@ -7,5 +7,6 @@ pydantic
 
 # Additional utilities
 numpy<2.0.0
+openai
 
 git+https://github.com/rayliuca/gector.git

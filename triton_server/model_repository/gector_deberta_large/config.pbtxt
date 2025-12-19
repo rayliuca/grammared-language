@@ -1,4 +1,4 @@
-name: "gector_bert"
+name: "gector_deberta_large"
 backend: "python"
 max_batch_size: 8
 
@@ -6,7 +6,7 @@ max_batch_size: 8
 # key/value structure
 parameters: {
   key: "huggingface_model",
-  value: {string_value: "bert-base-cased"}
+  value: {string_value: "gotutiyan/gector-deberta-large-5k"}
 }
 
 
