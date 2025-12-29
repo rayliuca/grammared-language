@@ -4,6 +4,7 @@ import threading
 from difflib import SequenceMatcher
 from typing import List, Dict, Tuple
 import re
+import os
 
 from .output_models import LanguageToolRemoteResult, Match, Context, Rule, SuggestedReplacement
 
@@ -164,7 +165,14 @@ class GrammarCorrectionExtractor:
         matcher = SequenceMatcher(None, orig_tokens, corr_tokens)
         opcodes = list(matcher.get_opcodes())
         
+        # Track which opcodes have been processed to avoid double-processing
+        consumed_indices = set()
+        
         for idx, (tag, i1, i2, j1, j2) in enumerate(opcodes):
+            # Skip if this opcode was already consumed by a previous operation
+            if idx in consumed_indices:
+                continue
+            
             if tag == 'replace':
                 # Get character positions
                 offset = orig_positions[i1]
@@ -202,101 +210,190 @@ class GrammarCorrectionExtractor:
             
             elif tag == 'insert':
                 # Convert insertion to replacement by including adjacent token
-                # This ensures we meet the min_length requirement
+                # or by merging with a following delete operation
                 
                 # Get the inserted text
                 repl_start = corr_positions[j1]
                 repl_end = corr_positions[j2 - 1] + len(corr_tokens[j2 - 1])
                 inserted_text = fixed_corrected[repl_start:repl_end]
                 
-                # Try to merge with the previous or next token to create a replacement
-                converted = self._convert_insertion_to_replacement(
-                    original, orig_tokens, orig_positions, 
-                    i1, inserted_text, opcodes, idx
+                # Try to merge with consecutive operations (delete/replace)
+                converted = self._try_merge_consecutive_operations(
+                    original, orig_tokens, orig_positions, corr_tokens, corr_positions,
+                    fixed_corrected, i1, None, inserted_text, opcodes, idx
                 )
                 
                 if converted:
-                    matches.append(converted)
+                    match, consumed_idx = converted
+                    matches.append(match)
+                    if consumed_idx is not None:
+                        consumed_indices.add(consumed_idx)
+            
+            elif tag == 'delete':
+                # Try to merge delete with following insert, or with adjacent token
+                converted = self._try_merge_consecutive_operations(
+                    original, orig_tokens, orig_positions, corr_tokens, corr_positions,
+                    fixed_corrected, i1, i2, None, opcodes, idx
+                )
+                
+                if converted:
+                    match, consumed_idx = converted
+                    matches.append(match)
+                    if consumed_idx is not None:
+                        consumed_indices.add(consumed_idx)
         
         return matches
     
-    def _convert_insertion_to_replacement(self, original: str, orig_tokens: List[str], 
-                                         orig_positions: List[int], insert_pos: int,
-                                         inserted_text: str, opcodes: List, current_idx: int) -> Dict:
+    def _try_merge_consecutive_operations(self, original: str, orig_tokens: List[str],
+                                         orig_positions: List[int], corr_tokens: List[str],
+                                         corr_positions: List[int], fixed_corrected: str,
+                                         start_idx: int, end_idx: int, inserted_text: str,
+                                         opcodes: List, current_idx: int) -> Dict:
         """
-        Convert an insertion to a replacement by including an adjacent token.
-        
-        Strategy:
-        1. Try to include the next token (insert before next word)
-        2. If no next token, include the previous token (append after previous word)
+        Attempt to merge consecutive operations or with adjacent tokens.
+        Handles:
+        - Insert + next delete/replace -> include next token
+        - Delete + next insert/replace -> merge into replacement
+        - Standalone insert/delete -> merge with adjacent token
         
         Args:
             original: Original text
             orig_tokens: Original tokens
             orig_positions: Original token positions
-            insert_pos: Position where insertion occurs
-            inserted_text: Text to be inserted
+            corr_tokens: Corrected tokens
+            corr_positions: Corrected token positions
+            fixed_corrected: Fixed corrected text
+            start_idx: Start token index in original
+            end_idx: End token index in original (None for insert)
+            inserted_text: Text being inserted (None for delete)
             opcodes: All opcodes from SequenceMatcher
             current_idx: Current opcode index
             
         Returns:
-            Replacement dict or None if conversion not possible
+            Tuple of (Match object, consumed_opcode_index) or None if no merge possible
         """
-        # Check if there's a next token (prefer inserting before next word)
-        if insert_pos < len(orig_tokens):
-            # Check if the next operation is not already handling this token
-            next_token_used = False
-            if current_idx + 1 < len(opcodes):
-                next_tag, next_i1, _, _, _ = opcodes[current_idx + 1]
-                if next_tag in ('replace', 'delete') and next_i1 == insert_pos:
-                    next_token_used = True
-            
-            if not next_token_used:
-                # Include the next token in the replacement
-                offset = orig_positions[insert_pos]
-                next_token = orig_tokens[insert_pos]
-                length = len(next_token)
-                replacement = inserted_text + " " + next_token
-                
-                return Match(
-                            message=replacement,
-                            suggested_replacements=[
-                                SuggestedReplacement(
-                                    replacement=replacement
-                                )
-                            ],
-                            offset=offset,
-                            length=length,
-                            # rule=Rule(
-                            #     id=rule_id,
-                            #     description=rule_description
-                            # )
-                        )
+        is_insert = end_idx is None
+        is_delete = inserted_text is None
         
-        # Otherwise, try to include the previous token
-        if insert_pos > 0:
-            prev_idx = insert_pos - 1
+        # Check if there's a next operation we can merge with
+        if current_idx + 1 < len(opcodes):
+            next_tag, next_i1, next_i2, next_j1, next_j2 = opcodes[current_idx + 1]
             
-            # Check if the previous token is already being replaced/deleted
-            prev_token_used = False
-            for other_idx, (other_tag, other_i1, other_i2, _, _) in enumerate(opcodes):
-                if other_idx != current_idx and other_tag in ('replace', 'delete'):
-                    if prev_idx >= other_i1 and prev_idx < other_i2:
-                        prev_token_used = True
-                        break
+            # Case 1: insert followed by delete/replace at the same position
+            if is_insert and next_tag in ('delete', 'replace') and next_i1 == start_idx:
+                next_token = orig_tokens[start_idx]
+                replacement = inserted_text + " " + next_token
+                match = self._create_match(
+                    orig_positions[start_idx], len(next_token), replacement
+                )[0]
+                return (match, current_idx + 1)
             
-            if not prev_token_used:
-                # Include the previous token in the replacement
-                offset = orig_positions[prev_idx]
-                prev_token = orig_tokens[prev_idx]
-                length = len(prev_token)
-                replacement = prev_token + " " + inserted_text
+            # Case 2: delete followed by insert/replace at the same position
+            if is_delete and next_tag in ('insert', 'replace') and next_i1 == end_idx:
+                offset = orig_positions[start_idx]
+                end_pos = orig_positions[end_idx - 1] + len(orig_tokens[end_idx - 1])
+                length = end_pos - offset
                 
-                return {
-                    'offset': offset,
-                    'length': length,
-                    'replacement': replacement
-                }
+                # Get the replacement text from corrected
+                repl_start = corr_positions[next_j1]
+                repl_end = corr_positions[next_j2 - 1] + len(corr_tokens[next_j2 - 1])
+                replacement = fixed_corrected[repl_start:repl_end]
+                
+                if length >= self.min_length and replacement != "":
+                    match = self._create_match(offset, length, replacement)[0]
+                    return (match, current_idx + 1)
+        
+        # No consecutive merge possible, try merging with adjacent tokens
+        if is_insert:
+            return self._merge_with_adjacent_token(
+                original, orig_tokens, orig_positions,
+                start_idx, inserted_text, opcodes, current_idx, is_insert=True
+            )
+        else:
+            return self._merge_with_adjacent_token(
+                original, orig_tokens, orig_positions,
+                start_idx, end_idx, opcodes, current_idx, is_insert=False
+            )
+    
+    def _create_match(self, offset: int, length: int, replacement: str) -> tuple:
+        """Helper to create a Match object with the given parameters."""
+        return (Match(
+            message=replacement,
+            suggested_replacements=[
+                SuggestedReplacement(replacement=replacement)
+            ],
+            offset=offset,
+            length=length,
+        ), None)
+    
+    def _merge_with_adjacent_token(self, original: str, orig_tokens: List[str],
+                                   orig_positions: List[int], start_idx: int,
+                                   end_idx_or_text: int, opcodes: List, current_idx: int,
+                                   is_insert: bool) -> Dict:
+        """
+        Merge an insert or delete with an adjacent token to create a valid replacement.
+        
+        Args:
+            original: Original text
+            orig_tokens: Original tokens
+            orig_positions: Original token positions
+            start_idx: Start token index
+            end_idx_or_text: End index (for delete) or inserted text (for insert)
+            opcodes: All opcodes
+            current_idx: Current opcode index
+            is_insert: True if this is an insert, False if delete
+            
+        Returns:
+            Tuple of (Match, consumed_idx) or None
+        """
+        if is_insert:
+            inserted_text = end_idx_or_text
+            # Try next token first
+            if start_idx < len(orig_tokens):
+                next_token_used = False
+                if current_idx + 1 < len(opcodes):
+                    next_tag, next_i1, _, _, _ = opcodes[current_idx + 1]
+                    if next_tag in ('replace', 'delete') and next_i1 == start_idx:
+                        next_token_used = True
+                
+                if not next_token_used:
+                    next_token = orig_tokens[start_idx]
+                    replacement = inserted_text + " " + next_token
+                    return self._create_match(
+                        orig_positions[start_idx], len(next_token), replacement
+                    )
+            
+            # Try previous token
+            if start_idx > 0:
+                prev_token = orig_tokens[start_idx - 1]
+                replacement = prev_token + " " + inserted_text
+                return self._create_match(
+                    orig_positions[start_idx - 1], len(prev_token), replacement
+                )
+        else:
+            # Delete case
+            del_end = end_idx_or_text
+            # Try previous token
+            if start_idx > 0:
+                prev_idx = start_idx - 1
+                prev_token = orig_tokens[prev_idx]
+                end_pos = orig_positions[del_end - 1] + len(orig_tokens[del_end - 1])
+                length = end_pos - orig_positions[prev_idx]
+                
+                if length >= self.min_length:
+                    return self._create_match(
+                        orig_positions[prev_idx], length, prev_token
+                    )
+            
+            # Try next token
+            if del_end < len(orig_tokens):
+                offset = orig_positions[start_idx]
+                next_token = orig_tokens[del_end]
+                end_pos = orig_positions[del_end] + len(next_token)
+                length = end_pos - offset
+                
+                if length >= self.min_length:
+                    return self._create_match(offset, length, next_token)
         
         return None
     
