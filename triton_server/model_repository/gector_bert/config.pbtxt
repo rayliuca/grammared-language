@@ -9,6 +9,7 @@ parameters: {
   value: {string_value: "gotutiyan/gector-bert-base-cased-5k"}
 }
 
+
 input [
   {
     name: "input_ids"
