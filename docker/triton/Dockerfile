@@ -12,20 +12,29 @@ RUN pip install --no-cache-dir uv
 RUN mkdir -p /opt/tritonserver/python_backend_env && \
     uv venv /opt/tritonserver/python_backend_env
 
+# Copy only necessary files for package installation
+# Copy package source code
+COPY pyproject.toml /grammared_language/
+COPY grammared_language/ /grammared_language/grammared_language/
+
 # Copy requirements file
 COPY triton_server/requirements.txt /tmp/requirements.txt
+
+WORKDIR /grammared_language
 
 # install torch packages
 RUN uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
     torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
 
-# Install dependencies in the Python backend environment using uv
+# Install grammared-language package with triton extras in the Python backend environment
 RUN uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
+    -e ".[triton]" && \
+    uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
     -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
 # Also install in the base environment for compatibility
-RUN uv pip install --system transformers sentencepiece protobuf
+RUN uv pip install --system -e ".[triton]" transformers sentencepiece protobuf
 
 # Copy custom backends or configurations if needed
 # COPY triton_server/custom_backends/ /opt/tritonserver/backends/

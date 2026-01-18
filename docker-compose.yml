@@ -23,6 +23,8 @@ services:
       - ./triton_server/model_repository:/models:ro
       - ./config/triton:/config:ro
       - triton-cache:/cache  # HuggingFace model cache
+      - ./hf_token:/cache/token  # HuggingFace token for private models
+#      - .:/grammared_language
     # shm_size: '1gb'
     deploy:
       resources:

@@ -25,24 +25,29 @@ class TritonPythonModel:
         Args:
             args: Dictionary containing model configuration
         """
+        logger.warning(f"initialize config: {args}")
+
         self.model_config = json.loads(args['model_config'])
-        
+        logger.warning(f"Loaded model config: {self.model_config}")
         # Get model instance device configuration
+        model_device_type = args['model_instance_kind']
         model_instance_device_id = args['model_instance_device_id']
-        
+
         # Determine device
-        if model_instance_device_id == 'CPU':
+        if model_device_type == 'CPU':
             self.device = 'cpu'
         else:
             self.device = f'cuda:{model_instance_device_id}'
-        
+
         # Initialize attributes for cleanup
         self.model = None
-        
+
         # Load the HuggingFace model
-        model_name = "gotutiyan/gector-bert-base-cased-5k"
-        # model_name = "bert-base-cased"
-        
+        if 'pretrained_model_name_or_path' in self.model_config['parameters']:
+            model_name = self.model_config['parameters']['pretrained_model_name_or_path']['string_value']
+        else:
+            raise RuntimeError(f"Failed to get model name from configuration: {self.model_config}")
+
         try:
             self.model = GECToR.from_pretrained(model_name, device_map=self.device)
             

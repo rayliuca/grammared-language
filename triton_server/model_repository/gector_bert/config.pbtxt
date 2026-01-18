@@ -5,10 +5,9 @@ max_batch_size: 8
 # Hugging face model path. Parameters must follow this
 # key/value structure
 parameters: {
-  key: "huggingface_model",
-  value: {string_value: "bert-base-cased"}
+  key: "pretrained_model_name_or_path",
+  value: {string_value: "gotutiyan/gector-bert-base-cased-5k"}
 }
-
 
 input [
   {

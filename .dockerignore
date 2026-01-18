@@ -1,0 +1,75 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+*.egg
+dist
+build
+.venv
+venv
+
+# Environment and configuration files (SENSITIVE - NEVER COPY)
+.env
+.env.local
+.env.*.local
+hf_token
+example_config.yaml
+.envrc
+
+# Test and CI files
+.pytest_cache
+.tox
+.coverage
+*.coverage
+htmlcov
+
+# Documentation and temporary files
+docs
+*.md
+CONTRIBUTING.md
+QUICKSTART.md
+
+# Config directories (not needed in triton image)
+config
+api
+docs
+
+# Temporary and conflict files
+*SFConflict*
+*.orig
+*.rej
+
+# uv lock files (not needed in container)
+uv.lock
+
+# Cache files
+.cache
+*.cache
+
+# Model repositories (mounted via volumes, not copied)
+triton_server/model_repo
+triton_server/model_repository
+
+# Large files
+data/
+
+# Docker and CI files
+docker-compose.yml
+Dockerfile
+Makefile

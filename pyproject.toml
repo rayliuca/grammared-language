@@ -1,0 +1,73 @@
+[project]
+name = "grammared-language"
+version = "0.1.0"
+description = "Grammar error correction backend with Triton and FastAPI/ GRPC integration"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+authors = [ { name = "Ray Liu", email = "ray@rayliu.ca" } ]
+
+# Core runtime dependencies (keep minimal; extras provide larger optional deps)
+dependencies = [
+  "numpy",
+  "pydantic",
+  #  "gector @ git+https://github.com/rayliuca/gector.git"
+  "openai",
+  "jinja2>=3.1.6",
+  "transformers[torch]>=4.0.0",
+  "scikit-learn",
+  "tritonclient[all]",
+]
+
+[project.optional-dependencies]
+api = [
+  "fastapi",
+  "uvicorn",
+  "pydantic",
+  "numpy",
+  "openai"
+]
+triton = [
+  "transformers>=4.30.0",
+  "accelerate",
+  "sentencepiece",
+  "protobuf",
+  "numpy"
+]
+grpc = [
+  "grpcio",
+  "grpcio-tools",
+  "protobuf",
+  "pydantic",
+  "numpy"
+]
+dev = [
+  "pytest",
+  "black",
+  "isort",
+  "mypy",
+  "tox",
+  "pre-commit",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["grammared_language*"]
+
+[tool.pytest.ini_options]
+testpaths = ["api/tests", "api/src/tests", "tests"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = 3.10
+ignore_missing_imports = true
