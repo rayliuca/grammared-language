@@ -1,0 +1,56 @@
+name: "grammared_classifier"
+backend: "python"
+max_batch_size: 8
+
+# Hugging face model path. Parameters must follow this
+# key/value structure
+parameters: {
+  key: "pretrained_model_name_or_path",
+  value: {string_value: "rayliuca/grammared-classifier-deberta-v3-small"}
+}
+
+input [
+  {
+    name: "TEXT"
+    data_type: TYPE_STRING
+    dims: [1]
+  }
+]
+
+output [
+  {
+    name: "OUTPUT"
+    data_type: TYPE_STRING
+    dims: [1]
+  }
+]
+
+# Instance groups - configure based on available resources
+instance_group [
+  {
+    count: 1
+    # kind: KIND_GPU
+    # gpus: [0]
+    kind: KIND_CPU
+  }
+]
+
+
+# Python backend requires these parameters
+parameters: {
+  key: "EXECUTION_ENV_PATH",
+  value: {string_value: "/opt/tritonserver/python_backend_env"}
+}
+
+# Dynamic batching for better throughput
+dynamic_batching {
+  preferred_batch_size: [1, 2, 4, 8]
+  max_queue_delay_microseconds: 100
+}
+
+# Model versioning
+version_policy: {
+  specific {
+    versions: [1]
+  }
+}

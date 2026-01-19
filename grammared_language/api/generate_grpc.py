@@ -33,7 +33,7 @@ def fix_relative_imports(grpc_gen_dir):
 
 def regenerate_grpc():
     """Regenerate gRPC code from ml_server.proto."""
-    src_dir = Path(__file__).parent
+    src_dir = Path(__file__).parent.parent / "language_tool"
     grpc_gen_dir = src_dir / "grpc_gen"
     proto_file = src_dir / "ml_server.proto"
     
