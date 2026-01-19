@@ -7,17 +7,9 @@ from transformers import AutoTokenizer
 from gector import predict, load_verb_dict
 from gector import GECToRTriton
 
-# Add parent directory to path for absolute imports
-if __name__ == "__main__":
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
-# Use try-except to support both relative and absolute imports
-try:
-    from .util import GrammarCorrectionExtractor, SimpleCacheStore
-    from .output_models import LanguageToolRemoteResult
-except ImportError:
-    from api.src.util import GrammarCorrectionExtractor, SimpleCacheStore
-    from api.src.output_models import LanguageToolRemoteResult
+from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
+from grammared_language.api.util import SimpleCacheStore
+from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 
 # FastAPI imports
 from fastapi import FastAPI, Request

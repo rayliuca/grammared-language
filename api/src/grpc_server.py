@@ -19,7 +19,8 @@ from transformers import AutoTokenizer
 from gector import predict, load_verb_dict
 from gector import GECToRTriton
 
-from grammared_language.api.util import GrammarCorrectionExtractor, SimpleCacheStore
+from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
+from grammared_language.api.util import SimpleCacheStore
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 from grammared_language.api.grpc_gen import ml_server_pb2, ml_server_pb2_grpc
 
