@@ -1,12 +1,17 @@
 import difflib
 import threading
+import sys
+import os
 
 from difflib import SequenceMatcher
 from typing import List, Dict, Tuple
 import re
-import os
 
-from .output_models import LanguageToolRemoteResult, Match, Context, Rule, SuggestedReplacement
+# Use try-except to support both relative and absolute imports
+try:
+    from .output_models import LanguageToolRemoteResult, Match, Context, Rule, SuggestedReplacement
+except ImportError:
+    from api.src.output_models import LanguageToolRemoteResult, Match, Context, Rule, SuggestedReplacement
 
 class SimpleCacheStore:
     """Thread-safe in-memory cache store."""

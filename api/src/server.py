@@ -1,11 +1,23 @@
 
 import time
+import sys
+import os
 from contextlib import asynccontextmanager
 from transformers import AutoTokenizer
 from gector import predict, load_verb_dict
 from gector import GECToRTriton
-from .util import GrammarCorrectionExtractor, SimpleCacheStore
-from .output_models import LanguageToolRemoteResult
+
+# Add parent directory to path for absolute imports
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# Use try-except to support both relative and absolute imports
+try:
+    from .util import GrammarCorrectionExtractor, SimpleCacheStore
+    from .output_models import LanguageToolRemoteResult
+except ImportError:
+    from api.src.util import GrammarCorrectionExtractor, SimpleCacheStore
+    from api.src.output_models import LanguageToolRemoteResult
 
 # FastAPI imports
 from fastapi import FastAPI, Request

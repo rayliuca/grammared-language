@@ -69,6 +69,8 @@ def test_process_endpoint(channel, analyzed_sentences):
         print(f"✓ Process RPC succeeded")
         print(f"  Raw matches: {len(response.rawMatches)}")
         print(f"  Processed matches: {len(response.matches)}")
+        for m in response.matches:
+            print(f"    Match: {m.matchDescription} at positions {m.offset}-{m.offset + m.length}")
         return response
     except grpc.RpcError as e:
         print(f"✗ Process RPC failed: {e.code()}")
@@ -99,6 +101,7 @@ def main():
             "This is a test sentence.",
             "She dont like apples.",
             "The quick brown fox jumps over the lazy dog.",
+            "its there fault",
         ]
         
         # Test Analyze endpoint

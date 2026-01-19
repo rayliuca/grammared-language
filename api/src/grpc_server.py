@@ -8,24 +8,36 @@ import logging
 from concurrent import futures
 import grpc
 import time
+import sys
+import os
+
+# Add parent directory to path for absolute imports
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from transformers import AutoTokenizer
 from gector import predict, load_verb_dict
 from gector import GECToRTriton
-from .util import GrammarCorrectionExtractor, SimpleCacheStore
-from .output_models import LanguageToolRemoteResult
 
-# Import generated protobuf and gRPC modules (generated from ml_server.proto)
-from .grpc_gen import ml_server_pb2
-from .grpc_gen import ml_server_pb2_grpc
+# Use try-except to support both relative and absolute imports
+try:
+    from .util import GrammarCorrectionExtractor, SimpleCacheStore
+    from .output_models import LanguageToolRemoteResult
+    from .grpc_gen import ml_server_pb2
+    from .grpc_gen import ml_server_pb2_grpc
+except ImportError:
+    from api.src.util import GrammarCorrectionExtractor, SimpleCacheStore
+    from api.src.output_models import LanguageToolRemoteResult
+    from api.src.grpc_gen import ml_server_pb2
+    from api.src.grpc_gen import ml_server_pb2_grpc
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Model initialization
-model_id = "gotutiyan/gector-deberta-large-5k"
-triton_model = GECToRTriton.from_pretrained(model_id, model_name="gector_deberta_large")
+model_id = "gotutiyan/gector-bert-base-cased-5k"
+triton_model = GECToRTriton.from_pretrained(model_id, model_name="gector_bert")
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 encode, decode = load_verb_dict('data/verb-form-vocab.txt')
 analyze_cache_store = SimpleCacheStore()
