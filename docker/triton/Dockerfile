@@ -2,15 +2,19 @@
 # This is a placeholder/template for the Triton server Docker image
 
 # Use NVIDIA Triton Inference Server as base image
-# Version should be chosen based on model requirements
-FROM nvcr.io/nvidia/tritonserver:23.10-py3
+FROM nvcr.io/nvidia/tritonserver:25.12-vllm-python-py3
 
-# Install uv for fast Python package management
-RUN pip install --no-cache-dir uv
+# Set pip cache directory (host should mount ./pip_cache to /pip_cache)
+ENV PIP_CACHE_DIR=/pip_cache
 
-# Create Python backend execution environment
-RUN mkdir -p /opt/tritonserver/python_backend_env && \
-    uv venv /opt/tritonserver/python_backend_env
+# Install uv for fast Python package management, using shared pip cache
+# Use --break-system-packages since this is a container environment
+RUN pip install --no-cache-dir --break-system-packages uv
+
+# Create a virtual environment for Triton Python backend
+# Triton expects the Python backend environment at this specific path
+ENV TRITON_VENV=/opt/tritonserver/python_backend_env
+RUN uv venv $TRITON_VENV
 
 # Copy only necessary files for package installation
 # Copy package source code
@@ -22,19 +26,21 @@ COPY triton_server/requirements.txt /tmp/requirements.txt
 
 WORKDIR /grammared_language
 
-# install torch packages
-RUN uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+# Install torch packages in the virtual environment
+RUN uv pip install --python $TRITON_VENV \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130 --cache-dir $PIP_CACHE_DIR
 
-# Install grammared-language package with triton extras in the Python backend environment
-RUN uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
-    -e ".[triton]" && \
-    uv pip install --python /opt/tritonserver/python_backend_env/bin/python \
-    -r /tmp/requirements.txt && \
+# Install grammared-language package with triton extras in the virtual environment
+RUN uv pip install --python $TRITON_VENV \
+    -r /tmp/requirements.txt --cache-dir $PIP_CACHE_DIR && \
     rm /tmp/requirements.txt
 
-# Also install in the base environment for compatibility
-RUN uv pip install --system -e ".[triton]" transformers sentencepiece protobuf
+RUN uv pip install --python $TRITON_VENV \
+    .[triton] --cache-dir $PIP_CACHE_DIR
+
+# Create a symlink to the actual Python site-packages for consistent path references
+RUN PYTHON_VERSION=$($TRITON_VENV/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
+    ln -s $TRITON_VENV/lib/python${PYTHON_VERSION}/site-packages $TRITON_VENV/site-packages
 
 # Copy custom backends or configurations if needed
 # COPY triton_server/custom_backends/ /opt/tritonserver/backends/
@@ -48,6 +54,16 @@ ENV MODEL_REPOSITORY=/models
 ENV LOG_VERBOSE=0
 ENV TRANSFORMERS_CACHE=/cache
 ENV HF_HOME=/cache
+
+# Add virtual environment to PATH so Python uses it
+ENV PATH="$TRITON_VENV/bin:$PATH"
+# Set PYTHONPATH to include the virtual environment's site-packages
+# This ensures Triton's Python backend can find installed packages
+# Using the symlink created earlier for version-independent path
+ENV PYTHONPATH="$TRITON_VENV/site-packages:$PYTHONPATH"
+
+# Change working directory to root to avoid import conflicts with /grammared_language
+WORKDIR /
 
 # Expose ports
 # 8000: HTTP

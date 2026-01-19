@@ -12,5 +12,5 @@ sentencepiece>=0.1.99
 protobuf>=3.20.0
 
 # Additional utilities
-numpy<2.0.0
+numpy
 scikit-learn>=1.7.2

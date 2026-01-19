@@ -9,7 +9,7 @@ import json
 import numpy as np
 import triton_python_backend_utils as pb_utils
 import torch
-from .pipeline import CalibratedTextClassificationPipeline
+from grammared_language.grammared_classifier import CalibratedTextClassificationPipeline
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

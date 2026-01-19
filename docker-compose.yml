@@ -24,6 +24,7 @@ services:
       - ./config/triton:/config:ro
       - triton-cache:/cache  # HuggingFace model cache
       - ./hf_token:/cache/token  # HuggingFace token for private models
+      - /tmp/pip_cache:/pip_cache  # Shared pip cache for faster builds
 #      - .:/grammared_language
     # shm_size: '1gb'
     deploy:

@@ -10,7 +10,7 @@ import numpy as np
 import triton_python_backend_utils as pb_utils
 from transformers import AutoModel
 import torch
-from .gector import GECToR
+from gector import GECToR
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG) # Set default level to WARNING
