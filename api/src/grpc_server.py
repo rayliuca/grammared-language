@@ -19,17 +19,9 @@ from transformers import AutoTokenizer
 from gector import predict, load_verb_dict
 from gector import GECToRTriton
 
-# Use try-except to support both relative and absolute imports
-try:
-    from .util import GrammarCorrectionExtractor, SimpleCacheStore
-    from .output_models import LanguageToolRemoteResult
-    from .grpc_gen import ml_server_pb2
-    from .grpc_gen import ml_server_pb2_grpc
-except ImportError:
-    from api.src.util import GrammarCorrectionExtractor, SimpleCacheStore
-    from api.src.output_models import LanguageToolRemoteResult
-    from api.src.grpc_gen import ml_server_pb2
-    from api.src.grpc_gen import ml_server_pb2_grpc
+from grammared_language.api.util import GrammarCorrectionExtractor, SimpleCacheStore
+from grammared_language.language_tool.output_models import LanguageToolRemoteResult
+from grammared_language.api.grpc_gen import ml_server_pb2, ml_server_pb2_grpc
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -6,7 +6,7 @@ from typing import List, Tuple
 import re
 from difflib import SequenceMatcher
 
-from ..language_tool.output_models import Match, SuggestedReplacement
+from grammared_language.language_tool.output_models import Match, SuggestedReplacement
 
 class GrammarCorrectionExtractor:
     """Extract replacement operations from original to corrected text."""

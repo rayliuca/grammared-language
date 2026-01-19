@@ -761,6 +761,7 @@ name = "grammared-language"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "gector" },
     { name = "jinja2" },
     { name = "numpy" },
@@ -774,6 +775,7 @@ dependencies = [
 [package.optional-dependencies]
 api = [
     { name = "fastapi" },
+    { name = "gector" },
     { name = "numpy" },
     { name = "openai" },
     { name = "pydantic" },
@@ -806,8 +808,10 @@ triton = [
 requires-dist = [
     { name = "accelerate", marker = "extra == 'triton'" },
     { name = "black", marker = "extra == 'dev'" },
+    { name = "fastapi", specifier = ">=0.128.0" },
     { name = "fastapi", marker = "extra == 'api'" },
     { name = "gector", git = "https://github.com/gotutiyan/gector" },
+    { name = "gector", marker = "extra == 'api'", git = "https://github.com/gotutiyan/gector" },
     { name = "grpcio", marker = "extra == 'grpc'" },
     { name = "grpcio-tools", marker = "extra == 'grpc'" },
     { name = "isort", marker = "extra == 'dev'" },

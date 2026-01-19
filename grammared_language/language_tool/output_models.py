@@ -27,7 +27,7 @@ class Software(BaseModel):
     name: Optional[str] = None
     version: Optional[str] = None
     
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", from_attributes=True)
 
 
 class IgnoreRange(BaseModel):
@@ -41,6 +41,7 @@ class SuggestedReplacement(BaseModel):
     suffix: Optional[str] = None  # Value shown in the UI after the replacement (but not part of it).
     confidence: Optional[float] = None  # from 0 (lowest) to 1 (highest)
     type: SuggestionType = SuggestionType.Default
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Context(BaseModel):
@@ -75,7 +76,7 @@ class Rule(BaseModel):
     tempOff: Optional[bool] = None
     isPremium: Optional[bool] = None
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", from_attributes=True)
 
 
 class Match(BaseModel):
@@ -98,7 +99,7 @@ class Match(BaseModel):
     shortMessage: Optional[str] = None
     suggested_replacements: Optional[List[SuggestedReplacement]] = None
     
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", from_attributes=True)
 
 
 class LanguageToolRemoteResult(BaseModel):
@@ -110,4 +111,4 @@ class LanguageToolRemoteResult(BaseModel):
     software: Optional[Software] = None
     ignoreRanges: Optional[List[IgnoreRange]] = None
     
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", from_attributes=True)

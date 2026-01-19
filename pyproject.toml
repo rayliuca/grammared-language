@@ -3,7 +3,7 @@ name = "grammared-language"
 version = "0.1.0"
 description = "Grammar error correction backend with Triton and FastAPI/ GRPC integration"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE.md" }
 authors = [ { name = "Ray Liu", email = "ray@rayliu.ca" } ]
 
@@ -18,6 +18,7 @@ dependencies = [
   "scikit-learn",
   "tritonclient[all]",
   "gector",
+  "fastapi>=0.128.0",
 ]
 
 [project.optional-dependencies]
