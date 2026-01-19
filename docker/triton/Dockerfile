@@ -16,15 +16,8 @@ RUN pip install --no-cache-dir --break-system-packages uv
 ENV TRITON_VENV=/opt/tritonserver/python_backend_env
 RUN uv venv $TRITON_VENV
 
-# Copy only necessary files for package installation
-# Copy package source code
-COPY pyproject.toml /grammared_language/
-COPY grammared_language/ /grammared_language/grammared_language/
-
 # Copy requirements file
 COPY triton_server/requirements.txt /tmp/requirements.txt
-
-WORKDIR /grammared_language
 
 # Install torch packages in the virtual environment
 RUN uv pip install --python $TRITON_VENV \
@@ -35,6 +28,12 @@ RUN uv pip install --python $TRITON_VENV \
     -r /tmp/requirements.txt --cache-dir $PIP_CACHE_DIR && \
     rm /tmp/requirements.txt
 
+# Copy only necessary files for package installation
+# Copy package source code
+COPY pyproject.toml /grammared_language/
+COPY grammared_language/ /grammared_language/grammared_language/
+
+WORKDIR /grammared_language
 RUN uv pip install --python $TRITON_VENV \
     .[triton] --cache-dir $PIP_CACHE_DIR
 

@@ -52,7 +52,7 @@ def test_model(triton_url="localhost:8000", model_name="gector_roberta"):
     # Load tokenizer for preparing inputs
     print("Loading tokenizer...")
     try:
-        tokenizer = AutoTokenizer.from_pretrained("gotutiyan/gector-roberta-base-5k")
+        tokenizer = AutoTokenizer.from_pretrained("gotutiyan/gector-bert-base-cased-5k")
         print("✅ Tokenizer loaded")
     except Exception as e:
         print(f"❌ Failed to load tokenizer: {e}")
@@ -185,8 +185,8 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default="gector_roberta",
-        help="Model name (default: gector_roberta)"
+        default="gector_bert",
+        help="Model name (default: gector_bert)"
     )
     
     args = parser.parse_args()

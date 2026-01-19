@@ -10,7 +10,7 @@ import numpy as np
 import triton_python_backend_utils as pb_utils
 from transformers import AutoModel
 import torch
-from .gector import GECToR
+from gector import GECToR
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)  # Set default level to WARNING
@@ -56,6 +56,7 @@ class TritonGectorPythonModel:
             # query_weights = first_encoder_layer.attention.self.query.weight
             # logger.warning(f"First encoder layer query weights: {query_weights}")
             # self.model.eval()
+
 
         except Exception as e:
             raise RuntimeError(f"Failed to load model {model_name}: {str(e)}")
