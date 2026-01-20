@@ -15,10 +15,7 @@ import os
 if __name__ == "__main__":
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from transformers import AutoTokenizer
-from gector import predict, load_verb_dict
-from gector import GECToRTriton
-
+from grammared_language.clients.gector_client import GectorClient
 from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
 from grammared_language.api.util import SimpleCacheStore
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
@@ -30,38 +27,17 @@ logger = logging.getLogger(__name__)
 
 # Model initialization
 model_id = "gotutiyan/gector-bert-base-cased-5k"
-triton_model = GECToRTriton.from_pretrained(model_id, model_name="gector_bert")
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-encode, decode = load_verb_dict('data/verb-form-vocab.txt')
+gector_client = GectorClient(
+    model_id=model_id,
+    triton_model_name="gector_bert",
+    verb_dict_path='data/verb-form-vocab.txt',
+    keep_confidence=0,
+    min_error_prob=0,
+    n_iteration=5,
+    batch_size=2
+)
 analyze_cache_store = SimpleCacheStore()
 process_cache_store = SimpleCacheStore()
-grammar_correction_extractor = GrammarCorrectionExtractor()
-
-def pred_gector(src: str) -> LanguageToolRemoteResult:
-    """
-    Perform grammar error correction using GECToR model.
-    Args:
-        src: Source sentence (string)
-    Returns:
-        LanguageToolRemoteResult
-    """
-    corrected = predict(
-        triton_model, tokenizer, [src],
-        encode, decode,
-        keep_confidence=0,
-        min_error_prob=0,
-        n_iteration=5,
-        batch_size=2,
-    )
-    print(src)
-    print(corrected[0])
-    matches = grammar_correction_extractor.extract_replacements(src, corrected[0])
-    print(matches)
-    return LanguageToolRemoteResult(
-        language="English",
-        languageCode="en-US",
-        matches=matches
-    )
 
 
 def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
@@ -191,7 +167,7 @@ class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
                     result = process_cache_store.get(text)
                 else:
                     # Run grammar checking
-                    result = pred_gector(text)
+                    result = gector_client.predict(text)
                     process_cache_store.add(text, result)
                 
                 # Convert matches to ml_server format
@@ -232,7 +208,7 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             
             sentence_matches = []
             for sentence in request.sentences:
-                result = pred_gector(sentence)
+                result = gector_client.predict(sentence)
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in result.matches]
                 )
@@ -262,7 +238,7 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             
             sentence_matches = []
             for analyzed_sentence in request.sentences:
-                result = pred_gector(analyzed_sentence.text)
+                result = gector_client.predict(analyzed_sentence.text)
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in result.matches]
                 )
