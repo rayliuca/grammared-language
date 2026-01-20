@@ -122,6 +122,9 @@ class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
             # Simple tokenization - just split by spaces for now
             # In production, use a proper NLP library
             text = request.text
+            if not text:
+                return ml_server_pb2.AnalyzeResponse(sentences=[])
+
             if analyze_cache_store.contains(text):
                 analyzed_sentences = analyze_cache_store.get(text)
                 return ml_server_pb2.AnalyzeResponse(sentences=analyzed_sentences)

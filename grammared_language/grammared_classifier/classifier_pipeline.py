@@ -30,7 +30,7 @@ class CalibratedTextClassificationPipeline(TextClassificationPipeline):
 
     def _load_calibrators(self):
         """Load calibrators from model config if available."""
-        if hasattr(self.model.config, 'probability_calibrator_weights'):
+        if hasattr(self, 'model') and hasattr(self.model, 'config') and hasattr(self.model.config, 'probability_calibrator_weights'):
             calibrator_weights = self.model.config.probability_calibrator_weights
             if calibrator_weights:
                 self.calibrators = [
@@ -152,13 +152,14 @@ class CalibratedTextClassificationPipeline(TextClassificationPipeline):
 
         return probs[0] if single_input else probs
 
-    def predict(self, texts: Union[str, List[str]], return_dict=True) -> Union[str, List[dict], dict]:
+    def predict(self, texts: Union[str, List[str]], return_dict=True, **kwargs) -> Union[str, List[dict], dict]:
         """
         Get calibrated predicted labels for texts.
 
         Args:
             texts: Single text or list of texts
             return_dict: return dict with score or not
+            **kwargs: Additional arguments passed to the pipeline call (e.g., top_k)
 
         Returns:
             Predicted label(s)
@@ -171,7 +172,8 @@ class CalibratedTextClassificationPipeline(TextClassificationPipeline):
             single_input = False
 
         # Get predictions
-        outputs = self(texts, top_k=1)
+        top_k = kwargs.get('top_k', 1)
+        outputs = self(texts, top_k=top_k)
 
         if not return_dict:
             outputs = [o['label'] for o in outputs]

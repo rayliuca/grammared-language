@@ -78,7 +78,7 @@ def test_predict_single_sentence(mock_tokenizer, mock_pipeline):
         
         result = model.predict("test sentence")
         
-        mock_pipeline.predict.assert_called_once_with(["test sentence"], top_k=1)
+        mock_pipeline.predict.assert_called_once_with("test sentence", top_k=1)
         assert result == expected_output
 
 def test_predict_list_of_sentences(mock_tokenizer, mock_pipeline):

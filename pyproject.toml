@@ -61,6 +61,9 @@ test = [
   "pytest-mock>=3.10.0",
   "requests>=2.28.0",
 ]
+all = [
+  "grammared-language[api,triton,grpc,dev,test]"
+]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

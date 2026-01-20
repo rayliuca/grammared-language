@@ -48,5 +48,5 @@ class TritonGrammaredClassifierModel:
 
     def predict(self, sentence_input: str|list[str]) -> list:
         if isinstance(sentence_input, str):
-            sentence_input = [sentence_input]
+            return self.pipeline.predict(sentence_input, top_k=1)
         return self.pipeline.predict(sentence_input, top_k=1)

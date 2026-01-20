@@ -54,15 +54,11 @@ class TestGrammaredClassifierFunctional:
             assert 0.0 <= res["score"] <= 1.0
 
     def test_pipeline_instantiation(self):
-        """Test that our custom pipeline can be instantiated via HF factory."""
-        from transformers import pipeline
-        
+        """Test that our custom pipeline can be instantiated via from_pretrained."""
         # Note: In real usage, the model config would have the calibrator weights.
         # Here we just verify the class can be initialized.
-        classifier = CalibratedTextClassificationPipeline(
-            model=TEST_MODEL_NAME,
-            tokenizer=TEST_MODEL_NAME,
-            task="text-classification"
+        classifier = CalibratedTextClassificationPipeline.from_pretrained(
+            TEST_MODEL_NAME
         )
         
         assert isinstance(classifier, CalibratedTextClassificationPipeline)

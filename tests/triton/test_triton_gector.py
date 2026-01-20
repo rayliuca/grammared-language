@@ -49,7 +49,7 @@ def tokenizer():
 @pytest.fixture
 def model_name():
     """Return the model name to test."""
-    return "gector_roberta"
+    return "gector_bert"
 
 
 class TestTritonServerHealth:
@@ -73,8 +73,7 @@ class TestGECToRModel:
             is_ready = triton_client.is_model_ready(model_name)
             if not is_ready:
                 # List available models for debugging
-                model_repository = triton_client.get_model_repository_index()
-                available_models = [model['name'] for model in model_repository.models]
+                available_models = [model['name'] for model in triton_client.get_model_repository_index()]
                 pytest.skip(f"Model {model_name} not ready. Available: {available_models}")
             assert is_ready
         except Exception as e:
@@ -95,8 +94,8 @@ class TestGECToRModel:
         """Test retrieving model configuration."""
         config = triton_client.get_model_config(model_name)
         
-        assert 'config' in config
-        model_config = config['config']
+        # In some versions it returns {'config': {...}}, in others the config directly
+        model_config = config.get('config', config)
         assert 'name' in model_config
         assert model_config['name'] == model_name
     
@@ -130,8 +129,8 @@ class TestGECToRModel:
         
         # Prepare outputs
         outputs = [
-            httpclient.InferRequestedOutput("labels"),
-            httpclient.InferRequestedOutput("d_tags") 
+            httpclient.InferRequestedOutput("logits_labels"),
+            httpclient.InferRequestedOutput("logits_d") 
         ]
         
         # Run inference
@@ -143,8 +142,8 @@ class TestGECToRModel:
             )
             
             # Get results
-            labels = response.as_numpy("labels")
-            d_tags = response.as_numpy("d_tags")
+            labels = response.as_numpy("logits_labels")
+            d_tags = response.as_numpy("logits_d")
             
             # Basic validation
             assert labels is not None
@@ -187,7 +186,7 @@ class TestGECToRModel:
         
         # Prepare outputs
         outputs = [
-            httpclient.InferRequestedOutput("labels")
+            httpclient.InferRequestedOutput("logits_labels")
         ]
         
         # Run inference
@@ -198,7 +197,7 @@ class TestGECToRModel:
                 outputs=outputs
             )
             
-            labels = response.as_numpy("labels")
+            labels = response.as_numpy("logits_labels")
             assert labels.shape[0] == len(test_texts)
             
         except Exception as e:
@@ -236,7 +235,7 @@ class TestModelPerformance:
         inputs[0].set_data_from_numpy(input_ids)
         inputs[1].set_data_from_numpy(attention_mask)
         
-        outputs = [httpclient.InferRequestedOutput("labels")]
+        outputs = [httpclient.InferRequestedOutput("logits_labels")]
         
         # Measure latency
         start_time = time.time()

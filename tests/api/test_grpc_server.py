@@ -96,8 +96,8 @@ class TestAnalyzeEndpoint:
             options=options
         )
         
-        with pytest.raises(grpc.RpcError):
-            response = grpc_stub.Analyze(request)
+        response = grpc_stub.Analyze(request)
+        assert len(response.sentences) == 0
 
 
 class TestProcessEndpoint:
