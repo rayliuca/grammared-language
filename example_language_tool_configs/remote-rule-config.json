@@ -1,0 +1,22 @@
+[
+  {
+    "ruleId": "ML_GRAMMAR_CHECKER",
+    "type": "grpc",
+    "url": "localhost",
+    "port": 50051,
+    "language": "en.*",
+    "baseTimeoutMilliseconds": 5000,
+    "timeoutPerCharacterMilliseconds": 100,
+    "downMilliseconds": 5000,
+    "failureRateThreshold": 50.0,
+    "slidingWindowType": "TIME_BASED",
+    "slidingWindowSize": 60,
+    "minimumNumberOfCalls": 10,
+    "options": {
+      "secure": "false",
+      "batchSize": "8",
+      "analyzed": "false",
+      "maxSentenceLength": "1000"
+    }
+  }
+]

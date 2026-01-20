@@ -130,6 +130,12 @@ python triton_server/scripts/test_gector.py
 
 For detailed instructions, see the [Quick Start Guide](QUICKSTART.md).
 
+### LanguageTool
+```
+java -cp languagetool-server.jar org.languagetool.server.HTTPServer --config server.properties --port 8081 --allow-origin "*"
+```
+
+
 ## Development
 
 ### Project Setup

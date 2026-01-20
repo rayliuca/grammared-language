@@ -74,10 +74,20 @@ def enrich_matches_with_classification(sentence: str, matches: list) -> list:
         enriched_matches = []
         for match, classification in zip(matches, classifications):
             # Create a copy of the match with updated message
-            match.message = classification.get("label", match.message)
-            match.message = classification.get("score", -1.0)
-            if classification.get("label", match.message).lower() == "none":
+            label = classification.get("label", match.message or "")
+            if label.lower() == "none":
                 continue  # Skip matches classified as "none"
+            match.message = label
+            
+            # Update confidence in suggested replacements with classification score
+            score = classification.get("score", -1)
+            if match.suggested_replacements:
+                for replacement in match.suggested_replacements:
+                    replacement.confidence = score
+            if match.suggestedReplacements:
+                for replacement in match.suggestedReplacements:
+                    replacement.confidence = score
+            
             enriched_matches.append(match)
         
         return enriched_matches
@@ -93,10 +103,10 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
         length=match.length,
         id="gector",
         sub_id="",
-        suggestions=match.suggestions,
+        suggestions=match.suggestions or [],
         ruleDescription=match.rule.description if match.rule else None,
-        matchDescription=match.message,
-        matchShortDescription=match.shortMessage or match.message,
+        matchDescription=match.message or "",
+        matchShortDescription=match.shortMessage or match.message or "",
         url="",
         suggestedReplacements=[
             ml_server_pb2.SuggestedReplacement(
