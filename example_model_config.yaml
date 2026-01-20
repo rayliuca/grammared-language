@@ -1,0 +1,48 @@
+models:
+    # Model selection and configuration
+    name:
+        type: (gector | coedit | deliterater | grammared_classifier | rule_llm)
+        backend: (triton | local)
+        triton_model_name: string  # Required if backend is triton
+        triton_hostname: triton-server
+        triton_port: 50051
+        model_kwargs:  # Additional model-specific arguments
+        configs:
+        rule_generation:
+            model: smollm2 # the model decleared in this config that is of the type `rule_llm`
+    gector_deberta_large:
+        type: gector
+        backend: triton
+        pretrained_model_name_or_path: "gotutiyan/gector-deberta-large-5k"
+        triton_model_name: gector_deberta_large
+        triton_hostname: triton-server
+        triton_port: 50051
+        configs:
+            cache_max_size: 10000
+    grammared_classifier_deberta_v3_small:
+        type: grammared_classifier
+        backend: triton
+        pretrained_model_name_or_path: "rayliuca/grammared-classifier-deberta-v3-small"
+        triton_model_name: grammared-classifier-deberta-v3-small
+        triton_hostname: triton-server
+        triton_port: 50051
+    smollm2_135m_rule_generator:
+        type: rule_llm
+        backend: triton
+        pretrained_model_name_or_path: "HuggingFaceTB/SmolLM2-135M-Instruct"
+        triton_model_name: smollm2_135m
+        triton_hostname: triton-server
+        triton_port: 50051
+        configs:
+            system_prompt: |
+                You are an expert in English grammar correction. Given a sentence, you will identify grammatical errors and provide corrected versions along with explanations.
+            user_prompt: |
+                Original Sentence: "{sentence}"
+                Corrected Sentence: "{corrected_sentence}"
+                corrections_made: "{original}" -> "{corrected}"
+                write a brief explanation (3 to 10 words) of the correction made.
+            max_retries: 3
+        model_kwargs:
+            temperature: 0.7
+            max_new_tokens: 25
+        

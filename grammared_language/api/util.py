@@ -5,7 +5,7 @@ import os
 import threading
 
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
-
+from .grpc_gen import ml_server_pb2
 
 class SimpleCacheStore:
     """Thread-safe in-memory cache store."""
@@ -117,3 +117,40 @@ What is the mistake category?""".strip()
     except Exception as e:
         # Fallback explanation if LLM call fails
         return f"Replaced '{mistake['text']}' with '{replacement}'"
+
+def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
+    """Convert Pydantic Match model to ml_server Match."""
+    return ml_server_pb2.Match(
+        offset=match.offset + offset_adjustment,
+        length=match.length,
+        id="gector",
+        sub_id="",
+        suggestions=match.suggestions,
+        ruleDescription=match.rule.description if match.rule else None,
+        matchDescription=match.message,
+        matchShortDescription=match.shortMessage or match.message,
+        url="",
+        suggestedReplacements=[
+            ml_server_pb2.SuggestedReplacement(
+                replacement=r.replacement,
+                description="",
+                suffix="",
+                confidence=0.8
+            )
+            for r in (match.suggested_replacements or [])
+        ],
+        autoCorrect=True,
+        type=ml_server_pb2.Match.MatchType.Other,  # Grammar errors are "Other" type
+        contextForSureMatch=0,
+        rule=ml_server_pb2.Rule(
+            sourceFile="gector",
+            issueType=match.rule.issueType or "grammar",
+            tempOff=False,
+            category=ml_server_pb2.RuleCategory(
+                id=match.rule.id or "gector",
+                name=match.rule.description or "Grammar Error"
+            ) if match.rule.category else None,
+            isPremium=False,
+            tags=[]
+        ) if match.rule else None
+    )
