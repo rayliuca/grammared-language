@@ -2,6 +2,7 @@
 import pytest
 import os
 from pathlib import Path
+import logging
 
 try:
     import grpc
@@ -17,6 +18,7 @@ pytestmark = pytest.mark.skipif(
     reason="Requires grpcio and RUN_NON_HERMETIC=true (needs running gRPC server)"
 )
 
+logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def grpc_channel():
@@ -134,6 +136,28 @@ class TestProcessEndpoint:
         assert len(response.matches) >= 0  # May or may not find errors depending on implementation
         assert hasattr(response, 'rawMatches')
     
+    def test_process_matches_have_classification_labels(self, grpc_stub, analyzed_sentences):
+        """Test that matches have classification labels in matchDescription."""
+        options = ml_server_pb2.ProcessingOptions(
+            language="en-US",
+            level=ml_server_pb2.ProcessingOptions.Level.defaultLevel
+        )
+        request = ml_server_pb2.ProcessRequest(
+            sentences=analyzed_sentences,
+            options=options
+        )
+        
+        response = grpc_stub.Process(request)
+        # If there are matches, they should have matchDescription (which contains the classification label)
+        if len(response.matches) > 0:
+            for match in response.matches:
+                
+                # The matchDescription should be populated (it's set from match.message which is the classification label)
+                assert match.matchDescription is not None
+                assert isinstance(match.matchDescription, str)
+                # Classification label should be a non-empty string
+                assert len(match.matchDescription) > 0
+                
     def test_process_correct_sentence(self, grpc_stub):
         """Test processing a correct sentence."""
         # First analyze
@@ -192,3 +216,98 @@ class TestEndToEndWorkflow:
         # Should complete without errors
         assert hasattr(process_response, 'matches')
         assert hasattr(process_response, 'rawMatches')
+
+
+class TestMLServerEndpoints:
+    """Test the MLServer (Match and MatchAnalyzed) RPC endpoints."""
+    
+    @pytest.fixture
+    def ml_stub(self, grpc_channel):
+        """Create an MLServer gRPC stub for testing."""
+        return ml_server_pb2_grpc.MLServerStub(grpc_channel)
+    
+    def test_match_endpoint(self, ml_stub):
+        """Test the Match endpoint with classification labels."""
+        request = ml_server_pb2.MatchRequest(
+            sentences=[
+                    "She dont like apples.",
+                    "its there fault"
+                ]
+        )
+        
+        response = ml_stub.Match(request)
+        
+        assert len(response.sentenceMatches) > 0
+        # First sentence matches
+        sentence_matches = response.sentenceMatches[0]
+        # May have matches for the grammatical errors
+        if len(sentence_matches.matches) > 0:
+            # Each match should have a matchDescription (from classification label)
+            for match in sentence_matches.matches:
+                assert match.matchDescription is not None
+                assert isinstance(match.matchDescription, str)
+                assert len(match.matchDescription) > 0
+    
+    def test_match_endpoint_multiple_sentences(self, ml_stub):
+        """Test the Match endpoint with multiple sentences."""
+        request = ml_server_pb2.MatchRequest(
+            sentences=[
+                "This is correct.",
+                "She dont like apples.",
+                "its there fault"
+            ]
+        )
+        
+        response = ml_stub.Match(request)
+        
+        assert len(response.sentenceMatches) == 3
+    
+    def test_match_analyzed_endpoint(self, ml_stub, grpc_channel):
+        """Test the MatchAnalyzed endpoint."""
+        # First get analyzed sentences
+        processing_stub = ml_server_pb2_grpc.ProcessingServerStub(grpc_channel)
+        options = ml_server_pb2.ProcessingOptions(
+            language="en-US",
+            level=ml_server_pb2.ProcessingOptions.Level.defaultLevel
+        )
+        analyze_request = ml_server_pb2.AnalyzeRequest(
+            text="She dont like apples.",
+            options=options
+        )
+        analyze_response = processing_stub.Analyze(analyze_request)
+        
+        # Then use MatchAnalyzed
+        match_request = ml_server_pb2.AnalyzedMatchRequest(
+            sentences=analyze_response.sentences
+        )
+        response = ml_stub.MatchAnalyzed(match_request)
+        
+        assert len(response.sentenceMatches) > 0
+        # If there are matches, verify they have classification labels
+        for sentence_matches in response.sentenceMatches:
+            if len(sentence_matches.matches) > 0:
+                for match in sentence_matches.matches:
+                    assert match.matchDescription is not None
+                    assert isinstance(match.matchDescription, str)
+    
+    def test_match_classification_consistency(self, ml_stub):
+        """Test that classification labels are consistent across multiple calls."""
+        sentence = "She dont like apples."
+        
+        # Make two requests
+        request1 = ml_server_pb2.MatchRequest(sentences=[sentence])
+        response1 = ml_stub.Match(request1)
+        
+        request2 = ml_server_pb2.MatchRequest(sentences=[sentence])
+        response2 = ml_stub.Match(request2)
+        
+        # Should have consistent results
+        matches1 = response1.sentenceMatches[0].matches
+        matches2 = response2.sentenceMatches[0].matches
+        
+        assert len(matches1) == len(matches2)
+        
+        # If there are matches, verify the descriptions are consistent
+        if len(matches1) > 0:
+            for m1, m2 in zip(matches1, matches2):
+                assert m1.matchDescription == m2.matchDescription

@@ -16,6 +16,7 @@ if __name__ == "__main__":
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from grammared_language.clients.gector_client import GectorClient
+from grammared_language.clients.grammar_classification_client import GrammarClassificationClient
 from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
 from grammared_language.api.util import SimpleCacheStore
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
@@ -36,8 +37,53 @@ gector_client = GectorClient(
     n_iteration=5,
     batch_size=2
 )
+
+# Initialize Grammar Classification Client
+classifier_model_id = "rayliuca/grammared-classifier-deberta-v3-small"
+grammar_classification_client = GrammarClassificationClient(
+    model_id=classifier_model_id,
+    triton_model_name="grammared_classifier",
+)
+
 analyze_cache_store = SimpleCacheStore()
 process_cache_store = SimpleCacheStore()
+
+
+def enrich_matches_with_classification(sentence: str, matches: list) -> list:
+    """
+    Enrich matches with classification labels.
+    
+    Uses GrammarClassificationClient to classify each match and updates
+    the match message with the classification label.
+    
+    Args:
+        sentence: The input sentence
+        matches: List of Match objects from gector_client
+        
+    Returns:
+        List of Match objects with updated message fields containing classification labels
+    """
+    if not matches:
+        return matches
+    
+    try:
+        # Get classification results
+        classifications = grammar_classification_client.predict_matches(sentence, matches)
+        
+        # Update each match with the classification label
+        enriched_matches = []
+        for match, classification in zip(matches, classifications):
+            # Create a copy of the match with updated message
+            match.message = classification.get("label", match.message)
+            match.message = classification.get("score", -1.0)
+            if classification.get("label", match.message).lower() == "none":
+                continue  # Skip matches classified as "none"
+            enriched_matches.append(match)
+        
+        return enriched_matches
+    except Exception as e:
+        logger.warning(f"Error during classification: {str(e)}, returning original matches")
+        return matches
 
 
 def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
@@ -168,6 +214,8 @@ class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
                 else:
                     # Run grammar checking
                     result = gector_client.predict(text)
+                    # Enrich matches with classification labels
+                    result.matches = enrich_matches_with_classification(text, result.matches)
                     process_cache_store.add(text, result)
                 
                 # Convert matches to ml_server format
@@ -209,6 +257,8 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             sentence_matches = []
             for sentence in request.sentences:
                 result = gector_client.predict(sentence)
+                # Enrich matches with classification labels
+                result.matches = enrich_matches_with_classification(sentence, result.matches)
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in result.matches]
                 )
@@ -239,6 +289,8 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             sentence_matches = []
             for analyzed_sentence in request.sentences:
                 result = gector_client.predict(analyzed_sentence.text)
+                # Enrich matches with classification labels
+                result.matches = enrich_matches_with_classification(analyzed_sentence.text, result.matches)
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in result.matches]
                 )

@@ -41,7 +41,7 @@ class GrammarClassificationClient(BaseClient):
         self,
         model_id: str,
         *,
-        backend: str = "hf",
+        backend: str = "triton",
         # Triton parameters
         triton_model_name: Optional[str] = None,
         triton_host: str = "localhost",
