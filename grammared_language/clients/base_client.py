@@ -12,8 +12,13 @@ class BaseClient:
         raise NotImplementedError("Subclasses should implement this method.")
     
     def _pred_postprocess(self, original: str, pred: str, **kwargs) -> LanguageToolRemoteResult:
-        return self.correction_extractor.extract_replacements(
+        matches = self.correction_extractor.extract_replacements(
             original=original, corrected=pred, fix_tokenization=kwargs.get('fix_tokenization', True)
+        )
+        return LanguageToolRemoteResult(
+            language="English",
+            languageCode="en-US",
+            matches=matches
         )
     
     def _output_postprocess(self, original: str, pred: LanguageToolRemoteResult, **kwargs) -> LanguageToolRemoteResult:
