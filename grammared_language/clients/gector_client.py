@@ -1,14 +1,45 @@
-from .base_client import BaseClient, LanguageToolRemoteResult
-from gector import GECToRTriton, GECToR, predict, load_verb_dict
-from transformers import AutoTokenizer
+from .base_client import BaseClient
+from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
+
+try:
+    from gector import GECToR, predict, load_verb_dict
+    GECTOR_AVAILABLE = True
+except ImportError:
+    GECToR = None
+    predict = None
+    load_verb_dict = None
+    GECTOR_AVAILABLE = False
+
+try:
+    from gector import GECToRTriton
+    GECTOR_TRITON_AVAILABLE = True
+except (ImportError, AttributeError):
+    GECToRTriton = None
+    GECTOR_TRITON_AVAILABLE = False
+
+try:
+    from transformers import AutoTokenizer
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    AutoTokenizer = None
+    TRANSFORMERS_AVAILABLE = False
 
 class GectorClient(BaseClient):
     def __init__(self, model_id: str, triton_model_name: str=None, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
         super().__init__(**kwargs)
+        
+        if not GECTOR_AVAILABLE:
+            raise ImportError("gector package is required for GectorClient. Install it with: pip install gector")
+        
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError("transformers package is required for GectorClient. Install it with: pip install transformers")
+        
         if triton_model_name is None:
             self.model = GECToR.from_pretrained(model_id)
         else:
+            if GECToRTriton is None:
+                raise ImportError("GECToRTriton is not available in your gector installation. Please upgrade gector or use the standard model.")
             self.model = GECToRTriton.from_pretrained(model_id, model_name=triton_model_name)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)

@@ -11,10 +11,16 @@ except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
 try:
-    from gector import GECToR, GECToRTriton, predict, load_verb_dict
+    from gector import GECToR, predict, load_verb_dict
     GECTOR_AVAILABLE = True
 except ImportError:
     GECTOR_AVAILABLE = False
+
+try:
+    from gector import GECToRTriton
+    GECTOR_TRITON_AVAILABLE = True
+except (ImportError, AttributeError):
+    GECTOR_TRITON_AVAILABLE = False
 
 # Determine if non-hermetic tests should run
 RUN_NON_HERMETIC = os.getenv("RUN_NON_HERMETIC", "false").lower() in ("true", "1", "yes")
@@ -224,8 +230,8 @@ class TestGectorClientNonHermetic:
                 triton_model_name="gector_bert"
             )
             return client
-        except ImportError:
-            pytest.skip("tritonclient not installed")
+        except ImportError as e:
+            pytest.skip(f"Missing dependency: {e}")
         except Exception as e:
             pytest.skip(f"Failed to initialize GectorClient with Triton: {e}")
     

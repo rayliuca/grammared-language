@@ -1,4 +1,4 @@
-from grammared_language.api.util import LanguageToolRemoteResult
+from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
 
 class BaseClient:

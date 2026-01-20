@@ -25,6 +25,7 @@ services:
       - triton-cache:/cache  # HuggingFace model cache
       - ./hf_token:/cache/token  # HuggingFace token for private models
       - ./model_config.yaml:/model_config.yaml:ro  # Model configuration
+      - ./triton_server/example_model_repository:/models:ro  # Example models
     # shm_size: '1gb'
     deploy:
       resources:
