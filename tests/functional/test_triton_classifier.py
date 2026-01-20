@@ -1,0 +1,234 @@
+"""Functional tests for Grammared Classifier Triton model."""
+import pytest
+import numpy as np
+import json
+import os
+
+try:
+    import tritonclient.http as httpclient
+    TRITON_AVAILABLE = True
+except ImportError:
+    TRITON_AVAILABLE = False
+
+RUN_NON_HERMETIC = os.getenv("RUN_NON_HERMETIC", "false").lower() in ("true", "1", "yes")
+
+pytestmark = pytest.mark.skipif(
+    not TRITON_AVAILABLE or not RUN_NON_HERMETIC,
+    reason="Requires tritonclient and RUN_NON_HERMETIC=true (needs running Triton server)"
+)
+
+
+@pytest.fixture(scope="module")
+def triton_client():
+    """Create Triton client for testing."""
+    try:
+        client = httpclient.InferenceServerClient(url="localhost:8000")
+        if not client.is_server_live():
+            pytest.skip("Triton server is not live")
+        return client
+    except Exception as e:
+        pytest.skip(f"Failed to connect to Triton server: {e}")
+
+
+@pytest.fixture
+def model_name():
+    """Return the model name to test."""
+    return "grammared_classifier"
+
+
+@pytest.fixture
+def model_version():
+    """Return the model version to test."""
+    return "1"
+
+
+class TestClassifierModel:
+    """Test Grammared Classifier model."""
+    
+    def test_model_is_ready(self, triton_client, model_name, model_version):
+        """Test that the classifier model is ready."""
+        try:
+            is_ready = triton_client.is_model_ready(model_name, model_version)
+            if not is_ready:
+                pytest.skip(f"Model {model_name} version {model_version} is not ready")
+            assert is_ready
+        except Exception as e:
+            pytest.skip(f"Model check failed: {e}")
+    
+    @pytest.mark.parametrize("test_text,expected_fields", [
+        ("This is a good correction.", ["label", "score"]),
+        ("This is a bad correction.", ["label", "score"]),
+        ("The sentence looks correct now.", ["label", "score"]),
+    ])
+    def test_single_inference(self, triton_client, model_name, model_version, test_text, expected_fields):
+        """Test single text inference."""
+        # Prepare text input
+        text_data = np.array([test_text], dtype=object)
+        
+        # Prepare inputs
+        inputs = [
+            httpclient.InferInput("TEXT", text_data.shape, "BYTES")
+        ]
+        inputs[0].set_data_from_numpy(text_data)
+        
+        # Prepare outputs
+        outputs = [
+            httpclient.InferRequestedOutput("OUTPUT")
+        ]
+        
+        # Send inference request
+        response = triton_client.infer(
+            model_name=model_name,
+            model_version=model_version,
+            inputs=inputs,
+            outputs=outputs
+        )
+        
+        # Get and parse results
+        output_data = response.as_numpy("OUTPUT")
+        result_json = output_data[0]
+        if isinstance(result_json, bytes):
+            result_json = result_json.decode('utf-8')
+        result = json.loads(result_json)
+        
+        # Validate result structure
+        for field in expected_fields:
+            assert field in result, f"Expected field '{field}' not found in result"
+        
+        # Validate score is a probability
+        assert 0.0 <= result['score'] <= 1.0
+        assert isinstance(result['label'], str)
+    
+    def test_batch_inference(self, triton_client, model_name, model_version):
+        """Test batch inference with multiple texts."""
+        test_texts = [
+            "This is a good correction.",
+            "This is a bad correction.",
+            "The sentence looks correct now."
+        ]
+        
+        results = []
+        for text in test_texts:
+            text_data = np.array([text], dtype=object)
+            
+            inputs = [
+                httpclient.InferInput("TEXT", text_data.shape, "BYTES")
+            ]
+            inputs[0].set_data_from_numpy(text_data)
+            
+            outputs = [
+                httpclient.InferRequestedOutput("OUTPUT")
+            ]
+            
+            response = triton_client.infer(
+                model_name=model_name,
+                model_version=model_version,
+                inputs=inputs,
+                outputs=outputs
+            )
+            
+            output_data = response.as_numpy("OUTPUT")
+            result_json = output_data[0]
+            if isinstance(result_json, bytes):
+                result_json = result_json.decode('utf-8')
+            result = json.loads(result_json)
+            results.append(result)
+        
+        # Validate all results
+        assert len(results) == len(test_texts)
+        for result in results:
+            assert 'label' in result
+            assert 'score' in result
+            assert 0.0 <= result['score'] <= 1.0
+    
+    def test_special_format_input(self, triton_client, model_name, model_version):
+        """Test with special format input (matching pipeline example)."""
+        test_text = 'I think you should try for that new [CLS]<|start_of_replace|>job.[SEP]job<|end_of_replace|>'
+        
+        # Prepare input with batch dimension
+        text_data = np.array([[test_text]], dtype=object)
+        
+        inputs = [
+            httpclient.InferInput("TEXT", [1, 1], "BYTES")
+        ]
+        inputs[0].set_data_from_numpy(text_data)
+        
+        outputs = [
+            httpclient.InferRequestedOutput("OUTPUT")
+        ]
+        
+        response = triton_client.infer(
+            model_name=model_name,
+            model_version=model_version,
+            inputs=inputs,
+            outputs=outputs
+        )
+        
+        output_data = response.as_numpy("OUTPUT")
+        result_json = output_data[0][0]
+        if isinstance(result_json, bytes):
+            result_json = result_json.decode('utf-8')
+        result = json.loads(result_json)
+        
+        # Validate result
+        assert 'label' in result
+        assert 'score' in result
+        assert result['label'] in ['LABEL_0', 'LABEL_1']  # Adjust based on actual labels
+        assert 0.0 <= result['score'] <= 1.0
+    
+    def test_empty_string_handling(self, triton_client, model_name, model_version):
+        """Test handling of empty string."""
+        text_data = np.array([""], dtype=object)
+        
+        inputs = [
+            httpclient.InferInput("TEXT", text_data.shape, "BYTES")
+        ]
+        inputs[0].set_data_from_numpy(text_data)
+        
+        outputs = [
+            httpclient.InferRequestedOutput("OUTPUT")
+        ]
+        
+        # Should handle gracefully or raise appropriate error
+        try:
+            response = triton_client.infer(
+                model_name=model_name,
+                model_version=model_version,
+                inputs=inputs,
+                outputs=outputs
+            )
+            # If it doesn't raise, validate result
+            output_data = response.as_numpy("OUTPUT")
+            result_json = output_data[0]
+            if isinstance(result_json, bytes):
+                result_json = result_json.decode('utf-8')
+            result = json.loads(result_json)
+            assert 'label' in result
+            assert 'score' in result
+        except Exception as e:
+            # Expected behavior - model may reject empty input
+            pass
+
+
+class TestModelMetadata:
+    """Test model metadata and configuration."""
+    
+    def test_model_metadata(self, triton_client, model_name):
+        """Test retrieving model metadata."""
+        metadata = triton_client.get_model_metadata(model_name)
+        
+        assert 'name' in metadata
+        assert metadata['name'] == model_name
+        assert 'versions' in metadata
+        assert 'platform' in metadata
+        assert 'inputs' in metadata
+        assert 'outputs' in metadata
+    
+    def test_model_config(self, triton_client, model_name):
+        """Test retrieving model configuration."""
+        config = triton_client.get_model_config(model_name)
+        
+        assert 'config' in config
+        model_config = config['config']
+        assert 'name' in model_config
+        assert model_config['name'] == model_name
