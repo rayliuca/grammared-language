@@ -1,6 +1,7 @@
-from ..util import LanguageToolRemoteResult, GrammarCorrectionExtractor
+from grammared_language.api.util import LanguageToolRemoteResult
+from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
 
-class BaseModel:
+class BaseClient:
     def __init__(self, *args, **kwargs):
         self.correction_extractor = GrammarCorrectionExtractor()
     
@@ -23,4 +24,6 @@ class BaseModel:
         corrected_text: str = self._predict(text)
         pred: LanguageToolRemoteResult = self._pred_postprocess(text, corrected_text)
         return self._output_postprocess(text, pred)
-    
+
+    def __call__(self, text: str) -> LanguageToolRemoteResult:
+        return self.predict(text)

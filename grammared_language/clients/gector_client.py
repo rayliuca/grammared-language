@@ -1,9 +1,43 @@
-from .base_model import BaseModel, LanguageToolRemoteResult
+from .base_client import BaseClient, LanguageToolRemoteResult
 from gector import GECToRTriton, GECToR, predict, load_verb_dict
 from transformers import AutoTokenizer
+from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
+# Model initialization
+model_id = "gotutiyan/gector-bert-base-cased-5k"
+triton_model = GECToRTriton.from_pretrained(model_id, model_name="gector_bert")
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+encode, decode = load_verb_dict('data/verb-form-vocab.txt')
+grammar_correction_extractor = GrammarCorrectionExtractor()
+
+def pred_gector(src: str) -> LanguageToolRemoteResult:
+    """
+    Perform grammar error correction using GECToR model.
+    Args:
+        src: Source sentence (string)
+    Returns:
+        LanguageToolRemoteResult
+    """
+    corrected = predict(
+        triton_model, tokenizer, [src],
+        encode, decode,
+        keep_confidence=0,
+        min_error_prob=0,
+        n_iteration=5,
+        batch_size=2,
+    )
+    print(src)
+    print(corrected[0])
+    matches = grammar_correction_extractor.extract_replacements(src, corrected[0])
+    print(matches)
+    return LanguageToolRemoteResult(
+        language="English",
+        languageCode="en-US",
+        matches=matches
+    )
 
 
-class GectorModel(BaseModel):
+
+class GectorClient(BaseClient):
     def __init__(self, model_id: str, triton_model_name: str=None, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
         super().__init__(**kwargs)
         if triton_model_name is None:
