@@ -31,7 +31,7 @@ class TestText2TextBaseClient:
         assert client.triton_model_version == "1"
         assert client.input_name == "text_input"
         assert client.output_name == "text_output"
-        assert client.prompt_template is None
+        assert client.chat_template is None
         mock_client_class.assert_called_once_with(url="localhost:8000")
     
     @patch('grammared_language.clients.text2text_base_client.httpclient')
@@ -47,14 +47,14 @@ class TestText2TextBaseClient:
             triton_model_version="2",
             input_name="custom_input",
             output_name="custom_output",
-            prompt_template="Fix grammar: {text}"
+            chat_template="Fix grammar: {text}"
         )
         
         assert client.model_name == "my_model"
         assert client.triton_model_version == "2"
         assert client.input_name == "custom_input"
         assert client.output_name == "custom_output"
-        assert client.prompt_template == "Fix grammar: {text}"
+        assert client.chat_template == "Fix grammar: {text}"
         mock_client_class.assert_called_once_with(url="custom-host:9000")
     
     @patch('grammared_language.clients.text2text_base_client.httpclient')
@@ -70,12 +70,12 @@ class TestText2TextBaseClient:
     
     @patch('grammared_language.clients.text2text_base_client.httpclient')
     def test_preprocess_with_template(self, mock_httpclient):
-        """Test preprocessing with prompt template."""
+        """Test preprocessing with chat template."""
         mock_httpclient.InferenceServerClient = Mock()
         
         client = Text2TextBaseClient(
             model_name="test_model",
-            prompt_template="Fix grammar: {text}"
+            chat_template="Fix grammar: {text}"
         )
         text = "This are a test."
         result = client._preprocess(text)
@@ -214,12 +214,12 @@ class TestText2TextBaseClientFunctional:
         return True
     
     def test_functional_prediction_with_template(self, triton_ready):
-        """Test actual prediction against running Triton server with prompt template."""
+        """Test actual prediction against running Triton server with chat template."""
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8000,
-            prompt_template="Fix grammar: {text}"
+            chat_template="Fix grammar: {text}"
         )
         
         test_text = "This are a test."
@@ -259,7 +259,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8000,
-            prompt_template="Fix grammar: {text}"
+            chat_template="Fix grammar: {text}"
         )
         
         test_text = "She go to the store and buy some milk yesterday."
@@ -282,7 +282,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8000,
-            prompt_template="Fix grammar: {text}"
+            chat_template="Fix grammar: {text}"
         )
         
         test_text = "She went to the store yesterday."
@@ -302,7 +302,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8000,
-            prompt_template="Fix grammar: {text}"
+            chat_template="Fix grammar: {text}"
         )
         
         test_text = "I has a car."
@@ -313,12 +313,12 @@ class TestText2TextBaseClientFunctional:
         print(f"Matches: {result.matches}")
     
     def test_functional_custom_prompt(self, triton_ready):
-        """Test with different prompt template."""
+        """Test with different chat template."""
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8000,
-            prompt_template="Grammar: {text}"
+            chat_template="Grammar: {text}"
         )
         
         test_text = "They was happy."

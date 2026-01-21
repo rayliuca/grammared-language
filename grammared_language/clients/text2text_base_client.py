@@ -28,8 +28,9 @@ class Text2TextBaseClient(BaseClient):
         triton_model_version: Model version (default: "1")
         input_name: Name of the input tensor (default: "text_input")
         output_name: Name of the output tensor (default: "text_output")
-        prompt_template: Optional template string for formatting input. Use {text} as placeholder.
-                        Example: "Fix grammar: {text}"
+        chat_template: Optional template string for formatting input (HuggingFace-compatible).
+                      Use {text} as placeholder. Example: "Fix grammar: {text}"
+                      For chat-style models, use format like: "<|user|>\n{text}<|assistant|>\n"
     """
     
     def __init__(
@@ -41,7 +42,7 @@ class Text2TextBaseClient(BaseClient):
         triton_model_version: str = "1",
         input_name: str = "text_input",
         output_name: str = "text_output",
-        prompt_template: Optional[str] = None,
+        chat_template: Optional[str] = None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -56,16 +57,16 @@ class Text2TextBaseClient(BaseClient):
         self.triton_model_version = triton_model_version
         self.input_name = input_name
         self.output_name = output_name
-        self.prompt_template = prompt_template
+        self.chat_template = chat_template
         
         # Initialize Triton HTTP client
         triton_url = f"{triton_host}:{triton_port}"
         self._triton_client = httpclient.InferenceServerClient(url=triton_url)
         
     def _preprocess(self, text: str) -> str:
-        """Apply prompt template if configured."""
-        if self.prompt_template:
-            return self.prompt_template.format(text=text)
+        """Apply chat template if configured."""
+        if self.chat_template:
+            return self.chat_template.format(text=text)
         return text
     
     def _predict(self, text: str) -> str:
