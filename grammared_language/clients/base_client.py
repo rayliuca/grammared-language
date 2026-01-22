@@ -1,9 +1,9 @@
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
-from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
+from grammared_language.utils.errant_grammar_correction_extractor import ErrantGrammarCorrectionExtractor
 
 class BaseClient:
     def __init__(self, *args, **kwargs):
-        self.correction_extractor = GrammarCorrectionExtractor()
+        self.correction_extractor = ErrantGrammarCorrectionExtractor()
     
     def _preprocess(self, text: str) -> str:
         return text

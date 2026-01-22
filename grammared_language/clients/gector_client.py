@@ -1,6 +1,6 @@
 from .base_client import BaseClient
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
-from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
+from grammared_language.utils.errant_grammar_correction_extractor import ErrantGrammarCorrectionExtractor
 
 try:
     from gector import GECToR, predict, load_verb_dict

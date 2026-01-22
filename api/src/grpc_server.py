@@ -18,7 +18,7 @@ if __name__ == "__main__":
 from grammared_language.clients.async_multi_client import AsyncMultiClient
 from grammared_language.clients.gector_client import GectorClient
 from grammared_language.clients.coedit_client import CoEditClient
-from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
+# from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
 from grammared_language.utils.errant_grammar_correction_extractor import ErrantGrammarCorrectionExtractor
 from grammared_language.api.util import SimpleCacheStore
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult

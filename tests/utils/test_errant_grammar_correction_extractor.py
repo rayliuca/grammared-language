@@ -150,3 +150,35 @@ class TestErrantGrammarCorrectionExtractor:
             # The extracted text should be meaningful
             assert len(original_text) > 0
             assert original_text.strip()  # Should not be just whitespace
+
+    def test_separate_consecutive_errors(self):
+        """Test that consecutive errors are detected separately, not combined."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        
+        original = "its there food"
+        corrected = "It's their food"
+        
+        matches = extractor.extract_replacements(original, corrected)
+        
+        # Should detect exactly 2 separate errors
+        assert len(matches) == 2, f"Expected 2 matches, got {len(matches)}"
+        
+        # Extract the matched text segments
+        matched_texts = [
+            original[match.offset:match.offset + match.length].lower()
+            for match in matches
+        ]
+        
+        # Verify individual matches
+        assert "its" in matched_texts, "Should match 'its' separately"
+        assert "there" in matched_texts, "Should match 'there' separately"
+        
+        # Ensure no match spans both words (combined match)
+        for match in matches:
+            matched_text = original[match.offset:match.offset + match.length]
+            assert "its there" not in matched_text.lower(), "Should not have combined 'its there' match"
+            
+        # Verify the replacements
+        replacements = [match.suggested_replacements[0].replacement for match in matches]
+        assert any("it's" in r.lower() or "it" in r.lower() for r in replacements), "Should suggest correction for 'its'"
+        assert any("their" in r.lower() for r in replacements), "Should suggest 'their'"
