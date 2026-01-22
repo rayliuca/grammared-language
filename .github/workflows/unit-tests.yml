@@ -23,7 +23,7 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies with uv
-        run: uv sync --locked
+        run: uv sync
 
       - name: Run tests with pytest
         run: uv -m pytest
