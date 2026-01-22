@@ -23,7 +23,7 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies with uv
-        run: uv sync
+        run: uv pip install ".[all]"
 
       - name: Run tests with pytest
         run: uv run pytest
