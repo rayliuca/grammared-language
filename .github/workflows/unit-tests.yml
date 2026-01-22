@@ -26,7 +26,7 @@ jobs:
         run: uv venv && uv pip install ".[all]"
               
       - name: Download SpaCy model
-        run: uv -m spacy download en_core_web_sm
+        run: uv run python -m spacy download en_core_web_sm
         
       - name: Run tests with pytest
         run: uv run pytest
