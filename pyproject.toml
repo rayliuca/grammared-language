@@ -19,6 +19,8 @@ dependencies = [
   "tritonclient[all]",
   "gector",
   "fastapi>=0.128.0",
+  "errant>=3.0.0",
+  "pip>=25.3",
 ]
 
 [project.optional-dependencies]
