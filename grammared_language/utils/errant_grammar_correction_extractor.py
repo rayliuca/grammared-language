@@ -9,6 +9,35 @@ import errant
 from grammared_language.language_tool.output_models import Match, SuggestedReplacement, MatchType
 
 
+ERROR_TYPE_LABELS = {
+    "NOUN:POSS": "Noun Possessive",
+    "CONTR": "Contraction",
+    "VERB:FORM": "Verb Form",
+    "VERB:TENSE": "Verb Tense",
+    "NOUN": "Noun Choice",
+    "VERB": "Verb Choice",
+    "ADJ": "Adjective",
+    "ADV": "Adverb",
+    "PREP": "Preposition",
+    "DET": "Determiner / Article",
+    "PART": "Particle / Phrasal Verb",
+    "PUNCT": "Punctuation",
+    "SPACE": "Whitespace",
+    "PRON": "Pronoun",
+    "CONJ": "Conjunction",
+    "NUM": "Number",
+    "SYM": "Symbol",
+    "X": "Other Token",
+    "OTHER": "Other / Uncategorized",
+    "ORTH": "Orthography (Case / Space)",
+    "WO": "Word Order",
+    "SPELL": "Spelling",
+    "MORPH": "Morphology / Derivation",
+    "ADJ:FORM": "Adjective Form",
+    "NOUN:NUM": "Noun Number",
+    "VERB:SVA": "Subject–Verb Agreement",
+}
+
 class ErrantGrammarCorrectionExtractor:
     """Extract replacement operations from original to corrected text using ERRANT."""
 
@@ -78,8 +107,11 @@ class ErrantGrammarCorrectionExtractor:
             if length >= self.min_length and replacement.strip():
                 # Create error message from ERRANT error type
                 error_type = edit.type if edit.type else "UNKNOWN"
+                if ":" in error_type:
+                    error_type = ":".join(error_type.split(":")[1:])
+                error_type = ERROR_TYPE_LABELS.get(error_type, error_type)
                 original_text = edit.o_str if edit.o_str else f"[insert at position {edit.o_start}]"
-                message = f"{error_type}: {original_text} -> {replacement}"
+                message = error_type
                 
                 matches.append(
                     Match(
