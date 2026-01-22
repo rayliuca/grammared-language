@@ -3,6 +3,7 @@ Grammar Error Correction - Extract Replacements using ERRANT
 Extracts replacements between original and corrected text using the ERRANT library.
 """
 from typing import List
+import re
 import errant
 
 from grammared_language.language_tool.output_models import Match, SuggestedReplacement, MatchType
@@ -29,7 +30,7 @@ class ErrantGrammarCorrectionExtractor:
         Args:
             original: The original text with errors
             corrected: The corrected text
-            fix_tokenization: Ignored for compatibility (ERRANT handles tokenization)
+            fix_tokenization: Whether to fix common tokenization mistakes in corrected text
 
         Returns:
             List of Match objects containing:
@@ -39,9 +40,15 @@ class ErrantGrammarCorrectionExtractor:
             - suggested_replacements: List[SuggestedReplacement] (corrected text)
             - type: MatchType (hint for grammar errors)
         """
+        # Pre-process to fix common tokenization mistakes in corrected text
+        if fix_tokenization:
+            fixed_corrected = self._fix_tokenization_mistakes(corrected)
+        else:
+            fixed_corrected = corrected
+        
         # Parse texts with ERRANT
         orig_parsed = self.annotator.parse(original)
-        cor_parsed = self.annotator.parse(corrected)
+        cor_parsed = self.annotator.parse(fixed_corrected)
         
         # Get edits from ERRANT
         edits = self.annotator.annotate(orig_parsed, cor_parsed)
@@ -166,3 +173,57 @@ class ErrantGrammarCorrectionExtractor:
         # Edge case: empty document or single insertion
         # Return the insertion at position 0
         return 0, 0, inserted_text
+
+    def _fix_tokenization_mistakes(self, text: str) -> str:
+        """
+        Fix common tokenization mistakes from generation models.
+
+        Common mistakes:
+        - "I ' m" -> "I'm" (spaces around apostrophe in contractions)
+        - "word ." -> "word." (space before period)
+        - "word ," -> "word," (space before comma)
+        - "word ?" -> "word?" (space before question mark)
+        - "word !" -> "word!" (space before exclamation)
+        - "word ;" -> "word;" (space before semicolon)
+        - "word :" -> "word:" (space before colon)
+
+        Args:
+            text: Input text with potential tokenization mistakes
+
+        Returns:
+            Fixed text with proper spacing
+        """
+        result = text
+
+        # Fix spaces around apostrophes in contractions
+        # Pattern 1: letter + space(s) + ' + space(s) + letter (e.g., "I ' m")
+        result = re.sub(r"(\w)\s+'\s+(\w)", r"\1'\2", result)
+        # Pattern 2: letter + ' + space(s) + letter (e.g., "I 'm")
+        result = re.sub(r"(\w)'\s+(\w)", r"\1'\2", result)
+        # Pattern 3: letter + space(s) + ' + letter (e.g., "it 's" - less common)
+        result = re.sub(r"(\w)\s+'(\w)", r"\1'\2", result)
+
+        # Fix space before punctuation
+        # Period - don't add extra space
+        result = re.sub(r'\s+\.', '.', result)
+        # Comma
+        result = re.sub(r'\s+,', ',', result)
+        # Question mark
+        result = re.sub(r'\s+\?', '?', result)
+        # Exclamation mark
+        result = re.sub(r'\s+!', '!', result)
+        # Semicolon
+        result = re.sub(r'\s+;', ';', result)
+        # Colon (but be careful not to break things like "http : //")
+        result = re.sub(r'(\w)\s+:', r'\1:', result)
+
+        # Fix space after opening quotes and before closing quotes
+        # But preserve the space between the quote and the surrounding words
+        result = re.sub(r'"\s+(\S)', r'" \1', result)
+        result = re.sub(r'(\S)\s+"', r'\1 "', result)
+
+        # Fix spaces around hyphens in compound words (letter-letter only)
+        # This preserves numeric ranges (10 - 20) and math operations (5 - 3)
+        result = re.sub(r'([a-zA-Z])\s+-\s+([a-zA-Z])', r'\1-\2', result)
+
+        return result

@@ -314,29 +314,35 @@ class GrammarCorrectionExtractor:
         result = text
 
         # Fix spaces around apostrophes in contractions
-        # Pattern: letter + space + ' + space + letter
+        # Pattern 1: letter + space(s) + ' + space(s) + letter (e.g., "I ' m")
         result = re.sub(r"(\w)\s+'\s+(\w)", r"\1'\2", result)
+        # Pattern 2: letter + ' + space(s) + letter (e.g., "I 'm")
+        result = re.sub(r"(\w)'\s+(\w)", r"\1'\2", result)
+        # Pattern 3: letter + space(s) + ' + letter (e.g., "it 's" - less common)
+        result = re.sub(r"(\w)\s+'(\w)", r"\1'\2", result)
 
         # Fix space before punctuation
-        # Period
-        result = re.sub(r'\s+\.', '. ', result)
+        # Period - don't add extra space
+        result = re.sub(r'\s+\.', '.', result)
         # Comma
         result = re.sub(r'\s+,', ',', result)
         # Question mark
         result = re.sub(r'\s+\?', '?', result)
         # Exclamation mark
-        result = re.sub(r'\s+!', '! ', result)
+        result = re.sub(r'\s+!', '!', result)
         # Semicolon
         result = re.sub(r'\s+;', ';', result)
         # Colon (but be careful not to break things like "http : //")
         result = re.sub(r'(\w)\s+:', r'\1:', result)
 
         # Fix space after opening quotes and before closing quotes
-        result = re.sub(r'"\s+', '"', result)
-        result = re.sub(r'\s+"', '"', result)
+        # But preserve the space between the quote and the surrounding words
+        result = re.sub(r'"\s+(\S)', r'" \1', result)
+        result = re.sub(r'(\S)\s+"', r'\1 "', result)
 
-        # Fix spaces around hyphens in compound words
-        result = re.sub(r'(\w)\s+-\s+(\w)', r'\1-\2', result)
+        # Fix spaces around hyphens in compound words (letter-letter only)
+        # This preserves numeric ranges (10 - 20) and math operations (5 - 3)
+        result = re.sub(r'([a-zA-Z])\s+-\s+([a-zA-Z])', r'\1-\2', result)
 
         return result
 
