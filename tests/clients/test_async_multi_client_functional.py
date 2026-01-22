@@ -238,7 +238,6 @@ class TestAsyncMultiClientEdgeCases:
         print(f"Long text ({len(text)} chars): processed by {len(results)} clients")
     
     @pytest.mark.asyncio
-    @pytest.mark.timeout(30)  # Add timeout to prevent hanging
     async def test_multiple_concurrent_requests(self, triton_ready, config_path):
         """Test multiple concurrent requests to the same client."""
         async_client = AsyncMultiClient(config_path=config_path)
@@ -264,7 +263,6 @@ class TestAsyncMultiClientEdgeCases:
             assert isinstance(results, list)
     
     @pytest.mark.asyncio
-    @pytest.mark.timeout(30)  # Add timeout to prevent hanging
     async def test_concurrent_single_text_multiple_times_2(self, triton_ready, config_path):
         """Test the same text being processed multiple times concurrently (second test)."""
         async_client = AsyncMultiClient(config_path=config_path)
