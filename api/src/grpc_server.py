@@ -15,8 +15,10 @@ import os
 if __name__ == "__main__":
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
+from grammared_language.clients.async_multi_client import AsyncMultiClient
 from grammared_language.clients.gector_client import GectorClient
 from grammared_language.clients.grammar_classification_client import GrammarClassificationClient
+from grammared_language.clients.coedit_client import CoEditClient
 from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
 from grammared_language.api.util import SimpleCacheStore
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
@@ -27,15 +29,29 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Model initialization
-model_id = "gotutiyan/gector-bert-base-cased-5k"
+model_id = "gotutiyan/gector-deberta-large-5k"
 gector_client = GectorClient(
     model_id=model_id,
-    triton_model_name="gector_bert",
+    triton_model_name="gector_deberta_large",
     verb_dict_path='data/verb-form-vocab.txt',
     keep_confidence=0,
     min_error_prob=0,
     n_iteration=5,
     batch_size=2
+)
+
+coedit_client = CoEditClient(
+    model_name="coedit_large",
+    triton_host="localhost",
+    triton_port=8001
+)
+
+# Multi-client for running predictions across all configured clients
+correction_multi_client = AsyncMultiClient(
+    clients=[
+        gector_client,
+        coedit_client,
+    ]
 )
 
 # Initialize Grammar Classification Client
@@ -75,8 +91,8 @@ def enrich_matches_with_classification(sentence: str, matches: list) -> list:
         for match, classification in zip(matches, classifications):
             # Create a copy of the match with updated message
             label = classification.get("label", match.message or "")
-            if label.lower() == "none":
-                continue  # Skip matches classified as "none"
+            # if label.lower() == "none":
+            #     continue  # Skip matches classified as "none"
             match.message = label
             
             # Update confidence in suggested replacements with classification score
@@ -96,12 +112,37 @@ def enrich_matches_with_classification(sentence: str, matches: list) -> list:
         return matches
 
 
+def predict_enriched_result(text: str) -> LanguageToolRemoteResult:
+    """
+    Predict grammar corrections using all configured clients, merge their matches,
+    enrich with classification labels, and return a LanguageToolRemoteResult container.
+    """
+    # Get merged predictions from all clients
+    merged_result = correction_multi_client.predict_with_merge(text)
+    
+    # Enrich matches with classification labels
+    enriched_matches = enrich_matches_with_classification(text, merged_result.matches)
+    
+    # debug:
+    for m in enriched_matches:
+        from grammared_language.language_tool.output_models import MatchType, Rule, RuleCategory
+        m.type = MatchType.Hint  # Clear type for logging
+        m.rule = Rule(
+            issueType="misspelling",  # Add this
+            category=RuleCategory(id="misspelling_id", name="misspelling_name")
+        )
+    
+    print(f"Enriched matches: {enriched_matches}")
+    merged_result.matches = enriched_matches
+    return merged_result
+
+
 def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
     """Convert Pydantic Match model to ml_server Match."""
-    return ml_server_pb2.Match(
+    grpc_match = ml_server_pb2.Match(
         offset=match.offset + offset_adjustment,
         length=match.length,
-        id="gector",
+        id="grammared_language",
         sub_id="",
         suggestions=match.suggestions or [],
         ruleDescription=match.rule.description if match.rule else None,
@@ -118,21 +159,23 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
             for r in (match.suggested_replacements or [])
         ],
         autoCorrect=True,
-        type=ml_server_pb2.Match.MatchType.Other,  # Grammar errors are "Other" type
+        type=ml_server_pb2.Match.MatchType.UnknownWord,  # Grammar errors are "Other" type
         contextForSureMatch=0,
         rule=ml_server_pb2.Rule(
-            sourceFile="gector",
-            issueType=match.rule.issueType or "grammar",
+            sourceFile="grammared_language",
+            issueType=match.rule.issueType or "style",
             tempOff=False,
             category=ml_server_pb2.RuleCategory(
-                id=match.rule.id or "gector",
-                name=match.rule.description or "Grammar Error"
+                id=match.rule.id or "grammared_language",
+                name=match.rule.description or "Style Suggestion"
             ) if match.rule.category else None,
             isPremium=False,
             tags=[]
         ) if match.rule else None
     )
-
+    print(f"Converted gRPC match: {grpc_match}")
+    print(f"Match Type: {grpc_match.type}")
+    return grpc_match
 
 class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
     """gRPC servicer for LanguageTool ProcessingServer."""
@@ -222,12 +265,10 @@ class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
                 if process_cache_store.contains(text):
                     result = process_cache_store.get(text)
                 else:
-                    # Run grammar checking
-                    result = gector_client.predict(text)
-                    # Enrich matches with classification labels
-                    result.matches = enrich_matches_with_classification(text, result.matches)
+                    # Predict using both models, merge and enrich, then cache
+                    result = predict_enriched_result(text)
                     process_cache_store.add(text, result)
-                
+
                 # Convert matches to ml_server format
                 sentence_matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in result.matches]
@@ -266,11 +307,9 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             
             sentence_matches = []
             for sentence in request.sentences:
-                result = gector_client.predict(sentence)
-                # Enrich matches with classification labels
-                result.matches = enrich_matches_with_classification(sentence, result.matches)
+                enriched_result = predict_enriched_result(sentence)
                 matches = ml_server_pb2.MatchList(
-                    matches=[pydantic_match_to_ml_match(m) for m in result.matches]
+                    matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
                 sentence_matches.append(matches)
             
@@ -298,11 +337,9 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             
             sentence_matches = []
             for analyzed_sentence in request.sentences:
-                result = gector_client.predict(analyzed_sentence.text)
-                # Enrich matches with classification labels
-                result.matches = enrich_matches_with_classification(analyzed_sentence.text, result.matches)
+                enriched_result = predict_enriched_result(analyzed_sentence.text)
                 matches = ml_server_pb2.MatchList(
-                    matches=[pydantic_match_to_ml_match(m) for m in result.matches]
+                    matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
                 sentence_matches.append(matches)
             

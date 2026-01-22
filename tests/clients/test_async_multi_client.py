@@ -79,7 +79,7 @@ class TestAsyncMultiClient:
         client2 = MockClient("client2", [match2])
         
         async_client = AsyncMultiClient(clients=[client1, client2])
-        results = await async_client.predict_async("This is a test")
+        results = await async_client._predict_async("This is a test")
         
         assert len(results) == 2
         assert len(results[0].matches) == 1
@@ -117,7 +117,7 @@ class TestAsyncMultiClient:
         client2 = MockClient("client2", [match2, match3])
         
         async_client = AsyncMultiClient(clients=[client1, client2])
-        result = await async_client.predict_with_merge("This is a test")
+        result = await async_client._predict_with_merge_async("This is a test")
         
         # Should have 2 matches (match3 is duplicate of match1 and filtered out)
         assert len(result.matches) == 2
@@ -180,7 +180,7 @@ class TestAsyncMultiClient:
         client2.predict = Mock(side_effect=ValueError("Test error"))
         
         async_client = AsyncMultiClient(clients=[client1, client2])
-        results = await async_client.predict_async("This is a test")
+        results = await async_client._predict_async("This is a test")
         
         # Should only have result from client1, client2 should be filtered out
         assert len(results) == 1
@@ -195,7 +195,7 @@ class TestAsyncMultiClient:
     async def test_predict_with_merge_empty_results(self):
         """Test merging with no valid results."""
         async_client = AsyncMultiClient()
-        result = await async_client.predict_with_merge("This is a test")
+        result = await async_client._predict_with_merge_async("This is a test")
         
         assert len(result.matches) == 0
         assert result.language == "English"
@@ -225,7 +225,7 @@ class TestAsyncMultiClient:
         async_client = AsyncMultiClient(clients=[client1, client2])
         
         texts = ["This is a test", "He goes there", "Another sentence"]
-        results = await async_client.predict_batch_async(texts)
+        results = await async_client._predict_batch_async(texts)
         
         # Should get results for all texts
         assert len(results) == 3
@@ -243,7 +243,7 @@ class TestAsyncMultiClient:
         
         # Submit 10 concurrent requests for the same text
         import asyncio
-        tasks = [async_client.predict_async("Test text") for _ in range(10)]
+        tasks = [async_client._predict_async("Test text") for _ in range(10)]
         results = await asyncio.gather(*tasks)
         
         # Should get 10 results
@@ -269,8 +269,60 @@ class TestAsyncMultiClient:
         client1 = MockClient("client1", [])
         
         async with AsyncMultiClient(clients=[client1]) as async_client:
-            results = await async_client.predict_async("Test")
+            results = await async_client._predict_async("Test")
             assert len(results) == 1
         
         # Executor should be shutdown after exiting context
         assert async_client._executor._shutdown
+    
+    def test_predict_with_merge_sync(self):
+        """Test synchronous predict_with_merge method."""
+        match1 = Match(
+            message="Test error 1",
+            shortMessage="Error 1",
+            offset=0,
+            length=4,
+            suggestions=["This"]
+        )
+        match2 = Match(
+            message="Test error 2",
+            shortMessage="Error 2",
+            offset=5,
+            length=3,
+            suggestions=["is"]
+        )
+        
+        client1 = MockClient("client1", [match1])
+        client2 = MockClient("client2", [match2])
+        
+        async_client = AsyncMultiClient(clients=[client1, client2])
+        result = async_client.predict_with_merge("This is a test")
+        
+        # Should have 2 matches
+        assert len(result.matches) == 2
+        assert result.matches[0].offset == 0
+        assert result.matches[1].offset == 5
+        assert result.language == "English"
+        assert result.languageCode == "en-US"
+    
+    def test_predict_batch_sync(self):
+        """Test synchronous predict_batch method."""
+        match1 = Match(
+            message="Test error 1",
+            shortMessage="Error 1",
+            offset=0,
+            length=4,
+            replacements=["This"]
+        )
+        
+        client1 = MockClient("client1", [match1])
+        
+        async_client = AsyncMultiClient(clients=[client1])
+        texts = ["This is a test", "He goes there"]
+        results = async_client.predict_batch(texts)
+        
+        # Should get results for both texts
+        assert len(results) == 2
+        # Each text should have results from client1
+        for text_results in results:
+            assert len(text_results) == 1

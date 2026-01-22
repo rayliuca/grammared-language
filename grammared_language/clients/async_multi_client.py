@@ -89,9 +89,9 @@ class AsyncMultiClient:
         """Add a client to the list."""
         self.clients.append(client)
     
-    async def predict_async(self, text: str) -> List[LanguageToolRemoteResult]:
+    async def _predict_async(self, text: str) -> List[LanguageToolRemoteResult]:
         """
-        Run all clients asynchronously on the input text.
+        Run all clients asynchronously on the input text (internal async method).
         
         Args:
             text: Input text to process
@@ -113,9 +113,9 @@ class AsyncMultiClient:
         
         return valid_results
     
-    async def predict_batch_async(self, texts: List[str]) -> List[List[LanguageToolRemoteResult]]:
+    async def _predict_batch_async(self, texts: List[str]) -> List[List[LanguageToolRemoteResult]]:
         """
-        Process multiple texts concurrently across all clients.
+        Process multiple texts concurrently across all clients (internal async method).
         
         Args:
             texts: List of input texts to process
@@ -123,7 +123,7 @@ class AsyncMultiClient:
         Returns:
             List of results for each text, where each result is a list from all clients
         """
-        tasks = [self.predict_async(text) for text in texts]
+        tasks = [self._predict_async(text) for text in texts]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Filter out exceptions
@@ -137,9 +137,9 @@ class AsyncMultiClient:
         
         return valid_results
     
-    async def predict_with_merge(self, text: str) -> LanguageToolRemoteResult:
+    async def _predict_with_merge_async(self, text: str) -> LanguageToolRemoteResult:
         """
-        Run all clients asynchronously and merge results.
+        Run all clients asynchronously and merge results (internal async method).
         
         Args:
             text: Input text to process
@@ -147,7 +147,7 @@ class AsyncMultiClient:
         Returns:
             Merged LanguageToolRemoteResult
         """
-        results = await self.predict_async(text)
+        results = await self._predict_async(text)
         
         if not results:
             return LanguageToolRemoteResult(
@@ -186,7 +186,7 @@ class AsyncMultiClient:
     
     def predict(self, text: str) -> List[LanguageToolRemoteResult]:
         """
-        Synchronous wrapper for predict_async.
+        Run all clients and return list of results from each client.
         
         Args:
             text: Input text to process
@@ -199,11 +199,51 @@ class AsyncMultiClient:
             # If loop is already running, we can't use run_until_complete or asyncio.run in this thread
             # Create a temporary executor to run the async task in a new thread
             with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(asyncio.run, self.predict_async(text))
+                future = executor.submit(asyncio.run, self._predict_async(text))
                 return future.result()
         except RuntimeError:
             # No event loop exists or is running in this thread, create one
-            return asyncio.run(self.predict_async(text))
+            return asyncio.run(self._predict_async(text))
+    
+    def predict_with_merge(self, text: str) -> LanguageToolRemoteResult:
+        """
+        Run all clients, merge their results, and return a single merged result.
+        
+        Args:
+            text: Input text to process
+            
+        Returns:
+            Merged LanguageToolRemoteResult with deduplicated matches from all clients
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            # If loop is already running, run in new thread
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(asyncio.run, self._predict_with_merge_async(text))
+                return future.result()
+        except RuntimeError:
+            # No event loop exists, create one
+            return asyncio.run(self._predict_with_merge_async(text))
+    
+    def predict_batch(self, texts: List[str]) -> List[List[LanguageToolRemoteResult]]:
+        """
+        Process multiple texts concurrently across all clients.
+        
+        Args:
+            texts: List of input texts to process
+            
+        Returns:
+            List of results for each text, where each result is a list from all clients
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            # If loop is already running, run in new thread
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(asyncio.run, self._predict_batch_async(texts))
+                return future.result()
+        except RuntimeError:
+            # No event loop exists, create one
+            return asyncio.run(self._predict_batch_async(texts))
     
     def __call__(self, text: str) -> List[LanguageToolRemoteResult]:
         """Make the client callable."""

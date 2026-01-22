@@ -76,7 +76,7 @@ class TestAsyncMultiClientFromConfig:
         # Test with text containing grammar errors
         text = "This are a test sentence with grammar error."
         
-        results = await async_client.predict_async(text)
+        results = await async_client._predict_async(text)
         
         # Should get results from at least one client
         assert len(results) > 0
@@ -95,8 +95,7 @@ class TestAsyncMultiClientFromConfig:
                     replacements = match.suggestions
                 print(f"  - [{match.offset}:{match.offset+match.length}] {match.message} -> {replacements}")
     
-    @pytest.mark.asyncio
-    async def test_predict_with_merge_real_models(self, triton_ready, config_path):
+    def test_predict_with_merge_real_models(self, triton_ready, config_path):
         """Test merging results from multiple real models."""
         async_client = AsyncMultiClient(config_path=config_path)
         
@@ -105,7 +104,7 @@ class TestAsyncMultiClientFromConfig:
         
         text = "He go to school yesterday."
         
-        merged_result = await async_client.predict_with_merge(text)
+        merged_result = async_client.predict_with_merge(text)
         
         # Should get a merged result
         assert hasattr(merged_result, 'matches')
@@ -176,48 +175,7 @@ class TestAsyncMultiClientWithManualClients:
         async_client = AsyncMultiClient(clients=clients)
         
         text = "He don't like apples."
-        results = await async_client.predict_async(text)
-        
-        # Should get at least one result
-        assert len(results) >= 1
-        print(f"Mixed clients: got {len(results)} results from {len(clients)} clients")
-    
-    @pytest.mark.asyncio
-    async def test_mixed_clients_async(self, triton_ready):
-        """Test AsyncMultiClient with multiple client types (Gector + Classifier)."""
-        clients = []
-        
-        # Try to add GectorClient
-        try:
-            gector = GectorClient(
-                model_id="gotutiyan/gector-deberta-large-5k",
-                triton_model_name="gector_deberta_large"
-            )
-            clients.append(gector)
-        except Exception as e:
-            print(f"Could not add GectorClient: {e}")
-        
-        # Try to add GrammarClassificationClient with gRPC
-        try:
-            classifier = GrammarClassificationClient(
-                model_id="rayliuca/grammared-classifier-deberta-v3-small",
-                backend="triton",
-                triton_model_name="grammared-classifier-deberta-v3-small",
-                triton_host="localhost",
-                triton_port=8001,
-                triton_protocol="grpc"
-            )
-            clients.append(classifier)
-        except Exception as e:
-            print(f"Could not add GrammarClassificationClient: {e}")
-        
-        if len(clients) == 0:
-            pytest.skip("No clients could be initialized")
-        
-        async_client = AsyncMultiClient(clients=clients)
-        
-        text = "He don't like apples."
-        results = await async_client.predict_async(text)
+        results = await async_client._predict_async(text)
         
         # Should get at least one result
         assert len(results) >= 1
@@ -234,7 +192,7 @@ class TestAsyncMultiClientWithManualClients:
         text = "This are a test."
         
         # Process same text 3 times concurrently (reduced from 5)
-        tasks = [async_client.predict_async(text) for _ in range(3)]
+        tasks = [async_client._predict_async(text) for _ in range(3)]
         all_results = await asyncio.gather(*tasks)
         
         assert len(all_results) == 3
@@ -258,7 +216,7 @@ class TestAsyncMultiClientEdgeCases:
         if len(async_client.clients) == 0:
             pytest.skip("No clients loaded")
         
-        results = await async_client.predict_async("")
+        results = await async_client._predict_async("")
         
         # Should handle empty text gracefully
         assert isinstance(results, list)
@@ -274,7 +232,7 @@ class TestAsyncMultiClientEdgeCases:
         # Create long text
         text = "This is a test sentence. " * 100
         
-        results = await async_client.predict_async(text)
+        results = await async_client._predict_async(text)
         
         assert len(results) > 0
         print(f"Long text ({len(text)} chars): processed by {len(results)} clients")
@@ -295,7 +253,7 @@ class TestAsyncMultiClientEdgeCases:
         ]
         
         # Submit multiple concurrent requests using the batch method
-        all_results = await async_client.predict_batch_async(texts)
+        all_results = await async_client._predict_batch_async(texts)
         
         assert len(all_results) == len(texts)
         print(f"Processed {len(texts)} concurrent requests")
@@ -307,8 +265,8 @@ class TestAsyncMultiClientEdgeCases:
     
     @pytest.mark.asyncio
     @pytest.mark.timeout(30)  # Add timeout to prevent hanging
-    async def test_concurrent_single_text_multiple_times(self, triton_ready, config_path):
-        """Test the same text being processed multiple times concurrently."""
+    async def test_concurrent_single_text_multiple_times_2(self, triton_ready, config_path):
+        """Test the same text being processed multiple times concurrently (second test)."""
         async_client = AsyncMultiClient(config_path=config_path)
         
         if len(async_client.clients) == 0:
@@ -317,7 +275,7 @@ class TestAsyncMultiClientEdgeCases:
         text = "This are a test."
         
         # Process same text 3 times concurrently (reduced from 5)
-        tasks = [async_client.predict_async(text) for _ in range(3)]
+        tasks = [async_client._predict_async(text) for _ in range(3)]
         all_results = await asyncio.gather(*tasks)
         
         assert len(all_results) == 3
