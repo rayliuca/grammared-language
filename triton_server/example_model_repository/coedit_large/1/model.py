@@ -55,9 +55,9 @@ class TritonPythonModel:
         # Assume tokenizer available for same model
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(hf_model)
         self.pipeline = transformers.pipeline(
-            "text-generation",
+            "text2text-generation",
             model=hf_model,
-            torch_dtype=torch.float16,
+            # torch_dtype=torch.float16,
             tokenizer=self.tokenizer,
             device_map="auto",
         )
@@ -79,7 +79,6 @@ class TritonPythonModel:
         sequences = self.pipeline(
             prompt,
             max_length=self.max_output_length,
-            pad_token_id=self.tokenizer.eos_token_id,
         )
 
         output_tensors = []

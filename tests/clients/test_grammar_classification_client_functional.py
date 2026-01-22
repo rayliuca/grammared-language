@@ -31,7 +31,7 @@ class TestGrammarClassificationClientFunctionalHF:
 
 # Optional Triton functional tests (requires running Triton server)
 try:
-    import tritonclient.http as httpclient
+    import tritonclient.grpc as grpcclient
     TRITON_AVAILABLE = True
 except Exception:
     TRITON_AVAILABLE = False
@@ -43,20 +43,20 @@ except Exception:
 class TestGrammarClassificationClientFunctionalTriton:
     @pytest.fixture(scope="class")
     def triton_ready(self):
-        client = httpclient.InferenceServerClient(url="localhost:8000")
+        client = grpcclient.InferenceServerClient(url="localhost:8001")
         if not client.is_server_live():
             pytest.skip("Triton server is not live")
         return True
 
     def test_predict_triton_single(self, triton_ready):
-        client = GrammarClassificationClient(model_id=TEST_MODEL_NAME, backend="triton", triton_host="localhost", triton_port=8000, triton_model_name="grammared_classifier")
+        client = GrammarClassificationClient(model_id=TEST_MODEL_NAME, backend="triton", triton_host="localhost", triton_port=8001, triton_model_name="grammared_classifier")
         res = client.predict("This is a good correction.")
         assert isinstance(res, dict)
         assert "label" in res and "score" in res
         assert 0.0 <= res["score"] <= 1.0
 
     def test_predict_triton_batch(self, triton_ready):
-        client = GrammarClassificationClient(model_id=TEST_MODEL_NAME, backend="triton", triton_host="localhost", triton_port=8000, triton_model_name="grammared_classifier")
+        client = GrammarClassificationClient(model_id=TEST_MODEL_NAME, backend="triton", triton_host="localhost", triton_port=8001, triton_model_name="grammared_classifier")
         res = client.predict(["Good.", "Bad.", "Neutral."])
         assert isinstance(res, list)
         assert len(res) == 3

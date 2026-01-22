@@ -5,10 +5,22 @@ import numpy as np
 
 try:
     import tritonclient.http as httpclient
-    _TRITON_AVAILABLE = True
+    import tritonclient.grpc as grpcclient
+    _TRITON_HTTP_AVAILABLE = True
+    _TRITON_GRPC_AVAILABLE = True
 except Exception:
-    httpclient = None
-    _TRITON_AVAILABLE = False
+    try:
+        import tritonclient.grpc as grpcclient
+        httpclient = None
+        _TRITON_HTTP_AVAILABLE = False
+        _TRITON_GRPC_AVAILABLE = True
+    except Exception:
+        httpclient = None
+        grpcclient = None
+        _TRITON_HTTP_AVAILABLE = False
+        _TRITON_GRPC_AVAILABLE = False
+
+_TRITON_AVAILABLE = _TRITON_HTTP_AVAILABLE or _TRITON_GRPC_AVAILABLE
 
 try:
     from transformers import AutoTokenizer
@@ -45,8 +57,9 @@ class GrammarClassificationClient(BaseClient):
         # Triton parameters
         triton_model_name: Optional[str] = None,
         triton_host: str = "localhost",
-        triton_port: int = 8000,
+        triton_port: int = 8001,  # Default to gRPC port
         triton_model_version: Optional[str] = "1",
+        triton_protocol: str = "grpc",  # "grpc" or "http"
     ) -> None:
         super().__init__()
 
@@ -54,6 +67,7 @@ class GrammarClassificationClient(BaseClient):
         if backend not in ("hf", "triton"):
             raise ValueError("backend must be 'hf' or 'triton'")
         self.backend = backend
+        self.triton_protocol = triton_protocol.lower()
 
         if not _TRANSFORMERS_AVAILABLE:
             raise ImportError(
@@ -78,8 +92,20 @@ class GrammarClassificationClient(BaseClient):
                 raise ImportError(
                     "tritonclient is required for Triton backend. Install with: pip install tritonclient[all]"
                 )
-            # Initialize Triton HTTP client
-            self._triton_client = httpclient.InferenceServerClient(url=self._triton_url)
+            
+            # Initialize Triton client based on protocol
+            if self.triton_protocol == "grpc":
+                if not _TRITON_GRPC_AVAILABLE:
+                    raise ImportError(
+                        "tritonclient.grpc is required for gRPC protocol. Install with: pip install tritonclient[grpc]"
+                    )
+                self._triton_client = grpcclient.InferenceServerClient(url=self._triton_url)
+            else:
+                if not _TRITON_HTTP_AVAILABLE:
+                    raise ImportError(
+                        "tritonclient.http is required for HTTP protocol. Install with: pip install tritonclient[http]"
+                    )
+                self._triton_client = httpclient.InferenceServerClient(url=self._triton_url)
 
     def featurizer(self, sentence: str, matches: List[Match], correction_idx: int) -> str:
         """
@@ -152,9 +178,17 @@ class GrammarClassificationClient(BaseClient):
         # Triton backend
         # Reshape to [batch_size, 1] as expected by the Triton model config
         text_np = np.array(payload, dtype=object).reshape(-1, 1)
-        inputs = [httpclient.InferInput("TEXT", list(text_np.shape), "BYTES")]
-        inputs[0].set_data_from_numpy(text_np)
-        outputs = [httpclient.InferRequestedOutput("OUTPUT")]
+        
+        # Create inputs based on protocol
+        if self.triton_protocol == "grpc":
+            inputs = [grpcclient.InferInput("TEXT", list(text_np.shape), "BYTES")]
+            inputs[0].set_data_from_numpy(text_np)
+            outputs = [grpcclient.InferRequestedOutput("OUTPUT")]
+        else:
+            inputs = [httpclient.InferInput("TEXT", list(text_np.shape), "BYTES")]
+            inputs[0].set_data_from_numpy(text_np)
+            outputs = [httpclient.InferRequestedOutput("OUTPUT")]
+        
         response = self._triton_client.infer(
             model_name=self._triton_model_name,
             model_version=self._triton_model_version,

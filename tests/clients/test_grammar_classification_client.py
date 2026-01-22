@@ -100,7 +100,7 @@ class TestGrammarClassificationClientUnit:
         assert {"label", "score"}.issubset(out[0].keys())
 
     def test_predict_triton_parses_json_bytes(self, monkeypatch):
-        # Build lightweight httpclient stub
+        # Build lightweight grpcclient stub
         class StubInferInput:
             def __init__(self, name, shape, dtype):
                 self.name = name
@@ -125,20 +125,20 @@ class TestGrammarClassificationClientUnit:
                     b'{"label": "none", "score": 0.55}',
                     b'{"label": "none", "score": 0.45}',
                 ], dtype=object))
-        stub_httpclient = MagicMock()
-        stub_httpclient.InferInput = StubInferInput
-        stub_httpclient.InferRequestedOutput = StubInferRequestedOutput
-        stub_httpclient.InferenceServerClient = StubClient
+        stub_grpcclient = MagicMock()
+        stub_grpcclient.InferInput = StubInferInput
+        stub_grpcclient.InferRequestedOutput = StubInferRequestedOutput
+        stub_grpcclient.InferenceServerClient = StubClient
 
         monkeypatch.setattr(
-            "grammared_language.clients.grammar_classification_client.httpclient",
-            stub_httpclient,
+            "grammared_language.clients.grammar_classification_client.grpcclient",
+            stub_grpcclient,
         )
 
         # Patch transformers to avoid real load
         mock_tokenizer = MagicMock()
         with patch("grammared_language.clients.grammar_classification_client.AutoTokenizer.from_pretrained", return_value=mock_tokenizer):
-            client = GrammarClassificationClient(model_id="dummy_model", backend="triton", triton_host="localhost", triton_port=8000)
+            client = GrammarClassificationClient(model_id="dummy_model", backend="triton", triton_host="localhost", triton_port=8001)
 
         out = client.predict(["a", "b"])
         assert isinstance(out, list)

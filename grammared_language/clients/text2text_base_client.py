@@ -4,10 +4,22 @@ import numpy as np
 
 try:
     import tritonclient.http as httpclient
-    _TRITON_AVAILABLE = True
+    import tritonclient.grpc as grpcclient
+    _TRITON_HTTP_AVAILABLE = True
+    _TRITON_GRPC_AVAILABLE = True
 except Exception:
-    httpclient = None
-    _TRITON_AVAILABLE = False
+    try:
+        import tritonclient.grpc as grpcclient
+        httpclient = None
+        _TRITON_HTTP_AVAILABLE = False
+        _TRITON_GRPC_AVAILABLE = True
+    except Exception:
+        httpclient = None
+        grpcclient = None
+        _TRITON_HTTP_AVAILABLE = False
+        _TRITON_GRPC_AVAILABLE = False
+
+_TRITON_AVAILABLE = _TRITON_HTTP_AVAILABLE or _TRITON_GRPC_AVAILABLE
 
 
 class Text2TextBaseClient(BaseClient):
@@ -24,8 +36,9 @@ class Text2TextBaseClient(BaseClient):
     Args:
         model_name: Name of the Triton model to use
         triton_host: Triton server host (default: "localhost")
-        triton_port: Triton server port (default: 8000)
+        triton_port: Triton server port (default: 8001 for gRPC, 8000 for HTTP)
         triton_model_version: Model version (default: "1")
+        triton_protocol: Communication protocol - "grpc" or "http" (default: "grpc")
         input_name: Name of the input tensor (default: "text_input")
         output_name: Name of the output tensor (default: "text_output")
         chat_template: Optional template string for formatting input (HuggingFace-compatible).
@@ -38,8 +51,9 @@ class Text2TextBaseClient(BaseClient):
         model_name: str,
         *,
         triton_host: str = "localhost",
-        triton_port: int = 8000,
+        triton_port: int = 8001,  # Default to gRPC port
         triton_model_version: str = "1",
+        triton_protocol: str = "grpc",  # "grpc" or "http"
         input_name: str = "text_input",
         output_name: str = "text_output",
         chat_template: Optional[str] = None,
@@ -55,13 +69,27 @@ class Text2TextBaseClient(BaseClient):
         
         self.model_name = model_name
         self.triton_model_version = triton_model_version
+        self.triton_protocol = triton_protocol.lower()
         self.input_name = input_name
         self.output_name = output_name
         self.chat_template = chat_template
         
-        # Initialize Triton HTTP client
+        # Initialize Triton client based on protocol
         triton_url = f"{triton_host}:{triton_port}"
-        self._triton_client = httpclient.InferenceServerClient(url=triton_url)
+        if self.triton_protocol == "grpc":
+            if not _TRITON_GRPC_AVAILABLE:
+                raise ImportError(
+                    "tritonclient.grpc is required for gRPC protocol. "
+                    "Install with: pip install tritonclient[grpc]"
+                )
+            self._triton_client = grpcclient.InferenceServerClient(url=triton_url)
+        else:
+            if not _TRITON_HTTP_AVAILABLE:
+                raise ImportError(
+                    "tritonclient.http is required for HTTP protocol. "
+                    "Install with: pip install tritonclient[http]"
+                )
+            self._triton_client = httpclient.InferenceServerClient(url=triton_url)
         
     def _preprocess(self, text: str) -> str:
         """Apply chat template if configured."""
@@ -82,18 +110,27 @@ class Text2TextBaseClient(BaseClient):
         # Prepare input as numpy array with shape [1]
         text_np = np.array([text], dtype=object)
         
-        # Create Triton input tensor
-        inputs = [
-            httpclient.InferInput(
-                self.input_name, 
-                list(text_np.shape), 
-                "BYTES"
-            )
-        ]
-        inputs[0].set_data_from_numpy(text_np)
-        
-        # Create Triton output request
-        outputs = [httpclient.InferRequestedOutput(self.output_name)]
+        # Create Triton input/output tensors based on protocol
+        if self.triton_protocol == "grpc":
+            inputs = [
+                grpcclient.InferInput(
+                    self.input_name, 
+                    list(text_np.shape), 
+                    "BYTES"
+                )
+            ]
+            inputs[0].set_data_from_numpy(text_np)
+            outputs = [grpcclient.InferRequestedOutput(self.output_name)]
+        else:
+            inputs = [
+                httpclient.InferInput(
+                    self.input_name, 
+                    list(text_np.shape), 
+                    "BYTES"
+                )
+            ]
+            inputs[0].set_data_from_numpy(text_np)
+            outputs = [httpclient.InferRequestedOutput(self.output_name)]
         
         # Send inference request
         response = self._triton_client.infer(

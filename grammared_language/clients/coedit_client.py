@@ -15,8 +15,9 @@ class CoEditClient(Text2TextBaseClient):
     Args:
         model_name: Name of the Triton model (default: "coedit_large")
         triton_host: Triton server host (default: "localhost")
-        triton_port: Triton server port (default: 8000)
+        triton_port: Triton server port (default: 8001 for gRPC, 8000 for HTTP)
         triton_model_version: Model version (default: "1")
+        triton_protocol: Communication protocol - "grpc" or "http" (default: "grpc")
         task: Task type for instruction template. Options:
             - "grammar": Fix grammatical errors (default)
             - "fluency": Make the text more fluent
@@ -57,8 +58,9 @@ class CoEditClient(Text2TextBaseClient):
         model_name: str = "coedit_large",
         *,
         triton_host: str = "localhost",
-        triton_port: int = 8000,
+        triton_port: int = 8001,  # Default to gRPC port
         triton_model_version: str = "1",
+        triton_protocol: str = "grpc",  # "grpc" or "http"
         task: Optional[str] = "grammar",
         chat_template: Optional[str] = None,
         **kwargs
@@ -81,6 +83,7 @@ class CoEditClient(Text2TextBaseClient):
             triton_host=triton_host,
             triton_port=triton_port,
             triton_model_version=triton_model_version,
+            triton_protocol=triton_protocol,
             input_name="text_input",
             output_name="text_output",
             chat_template=template,

@@ -9,21 +9,21 @@ from grammared_language.language_tool.output_models import LanguageToolRemoteRes
 RUN_NON_HERMETIC = os.getenv("RUN_NON_HERMETIC", "false").lower() in ("true", "1", "yes")
 
 try:
-    import tritonclient.http as httpclient
+    import tritonclient.grpc as grpcclient
     TRITON_AVAILABLE = True
 except Exception:
-    httpclient = None
+    grpcclient = None
     TRITON_AVAILABLE = False
 
 
 class TestCoEditClient:
     """Unit tests for CoEditClient."""
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_initialization_default(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_initialization_default(self, mock_grpcclient):
         """Test default initialization with grammar task."""
         mock_client_class = Mock()
-        mock_httpclient.InferenceServerClient = mock_client_class
+        mock_grpcclient.InferenceServerClient = mock_client_class
         
         client = CoEditClient()
         
@@ -31,12 +31,12 @@ class TestCoEditClient:
         assert client.triton_model_version == "1"
         assert client.task == "grammar"
         assert client.chat_template == "Fix grammatical errors: {text}"
-        mock_client_class.assert_called_once_with(url="localhost:8000")
+        mock_client_class.assert_called_once_with(url="localhost:8001")
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_initialization_custom_model(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_initialization_custom_model(self, mock_grpcclient):
         """Test initialization with custom model name."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(
             model_name="coedit_xl",
@@ -47,100 +47,100 @@ class TestCoEditClient:
         assert client.model_name == "coedit_xl"
         assert client.task == "grammar"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_fluency(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_fluency(self, mock_grpcclient):
         """Test fluency task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="fluency")
         
         assert client.task == "fluency"
         assert client.chat_template == "Make the text more fluent: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_coherence(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_coherence(self, mock_grpcclient):
         """Test coherence task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="coherence")
         
         assert client.task == "coherence"
         assert client.chat_template == "Make the text more coherent: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_clarity(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_clarity(self, mock_grpcclient):
         """Test clarity task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="clarity")
         
         assert client.task == "clarity"
         assert client.chat_template == "Make the text more clear: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_paraphrase(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_paraphrase(self, mock_grpcclient):
         """Test paraphrase task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="paraphrase")
         
         assert client.task == "paraphrase"
         assert client.chat_template == "Paraphrase: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_neutralize(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_neutralize(self, mock_grpcclient):
         """Test neutralize task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="neutralize")
         
         assert client.task == "neutralize"
         assert client.chat_template == "Make the text more neutral: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_simplify(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_simplify(self, mock_grpcclient):
         """Test simplify task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="simplify")
         
         assert client.task == "simplify"
         assert client.chat_template == "Simplify: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_formalize(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_formalize(self, mock_grpcclient):
         """Test formalize task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="formalize")
         
         assert client.task == "formalize"
         assert client.chat_template == "Make the text more formal: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_update(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_update(self, mock_grpcclient):
         """Test update task prompt."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="update")
         
         assert client.task == "update"
         assert client.chat_template == "Update: {text}"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_task_none(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_task_none(self, mock_grpcclient):
         """Test no task (raw text input)."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task=None)
         
         assert client.task is None
         assert client.chat_template is None
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_custom_prompt(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_custom_prompt(self, mock_grpcclient):
         """Test custom chat template overrides task."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         custom = "Custom instruction: {text}"
         client = CoEditClient(task="grammar", chat_template=custom)
@@ -148,10 +148,10 @@ class TestCoEditClient:
         assert client.chat_template == custom
         assert client.task == "grammar"  # Task is still stored
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_invalid_task(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_invalid_task(self, mock_grpcclient):
         """Test invalid task raises ValueError."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         with pytest.raises(ValueError) as exc_info:
             CoEditClient(task="invalid_task")
@@ -159,10 +159,10 @@ class TestCoEditClient:
         assert "Invalid task" in str(exc_info.value)
         assert "invalid_task" in str(exc_info.value)
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_preprocess_applies_template(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_preprocess_applies_template(self, mock_grpcclient):
         """Test preprocessing applies chat template."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = CoEditClient(task="grammar")
         text = "She go to store."
@@ -170,14 +170,14 @@ class TestCoEditClient:
         
         assert processed == "Fix grammatical errors: She go to store."
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_predict_flow(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_predict_flow(self, mock_grpcclient):
         """Test full prediction flow."""
         # Setup mocks
         mock_client = Mock()
-        mock_httpclient.InferenceServerClient = Mock(return_value=mock_client)
-        mock_httpclient.InferInput = Mock()
-        mock_httpclient.InferRequestedOutput = Mock()
+        mock_grpcclient.InferenceServerClient = Mock(return_value=mock_client)
+        mock_grpcclient.InferInput = Mock()
+        mock_grpcclient.InferRequestedOutput = Mock()
         
         # Mock response
         mock_response = Mock()
@@ -191,10 +191,10 @@ class TestCoEditClient:
         assert result.language == "English"
         assert result.languageCode == "en-US"
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_all_tasks_valid(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_all_tasks_valid(self, mock_grpcclient):
         """Test that all documented tasks are valid."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         tasks = [
             "grammar", "fluency", "coherence", "clarity",
@@ -222,7 +222,7 @@ class TestCoEditClientFunctional:
             pytest.skip("tritonclient not available")
         
         try:
-            client = httpclient.InferenceServerClient(url="localhost:8000")
+            client = grpcclient.InferenceServerClient(url="localhost:8001")
             if not client.is_server_live():
                 pytest.skip("Triton server is not live")
             

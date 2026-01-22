@@ -6,7 +6,7 @@ from typing import List, Tuple
 import re
 from difflib import SequenceMatcher
 
-from grammared_language.language_tool.output_models import Match, SuggestedReplacement
+from grammared_language.language_tool.output_models import Match, SuggestedReplacement, MatchType, SuggestionType
 
 class GrammarCorrectionExtractor:
     """Extract replacement operations from original to corrected text."""
@@ -81,11 +81,21 @@ class GrammarCorrectionExtractor:
                             message=replacement,
                             suggested_replacements=[
                                 SuggestedReplacement(
-                                    replacement=replacement
+                                    replacement=replacement,
+                                    # type=SuggestionType.Translation
                                 )
                             ],
                             offset=offset,
                             length=length,
+
+                            # /** Spelling errors, typically red. */
+                            # UnknownWord = 0;
+                            # /** Style errors, typically light blue. */
+                            # Hint = 1;
+                            # /** Other errors (including grammar), typically yellow/orange. */
+                            # Other = 2;
+                            # !!! not used/ accepted by LanguageTool Server
+                            type=MatchType.Hint,
                             # rule=Rule(
                             #     id=rule_id,
                             #     description=rule_description

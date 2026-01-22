@@ -25,8 +25,8 @@ class BaseClient:
         return pred
 
     def predict(self, text: str) -> LanguageToolRemoteResult:
-        text = self._preprocess(text)
-        corrected_text: str = self._predict(text)
+        _text = self._preprocess(text)
+        corrected_text: str = self._predict(_text)
         pred: LanguageToolRemoteResult = self._pred_postprocess(text, corrected_text)
         return self._output_postprocess(text, pred)
 

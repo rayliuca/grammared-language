@@ -9,21 +9,21 @@ from grammared_language.language_tool.output_models import LanguageToolRemoteRes
 RUN_NON_HERMETIC = os.getenv("RUN_NON_HERMETIC", "false").lower() in ("true", "1", "yes")
 
 try:
-    import tritonclient.http as httpclient
+    import tritonclient.grpc as grpcclient
     TRITON_AVAILABLE = True
 except Exception:
-    httpclient = None
+    grpcclient = None
     TRITON_AVAILABLE = False
 
 
 class TestText2TextBaseClient:
     """Test suite for Text2TextBaseClient."""
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_initialization(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_initialization(self, mock_grpcclient):
         """Test client initialization with default parameters."""
         mock_client_class = Mock()
-        mock_httpclient.InferenceServerClient = mock_client_class
+        mock_grpcclient.InferenceServerClient = mock_client_class
         
         client = Text2TextBaseClient(model_name="coedit_large")
         
@@ -32,13 +32,13 @@ class TestText2TextBaseClient:
         assert client.input_name == "text_input"
         assert client.output_name == "text_output"
         assert client.chat_template is None
-        mock_client_class.assert_called_once_with(url="localhost:8000")
+        mock_client_class.assert_called_once_with(url="localhost:8001")
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_initialization_custom_params(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_initialization_custom_params(self, mock_grpcclient):
         """Test client initialization with custom parameters."""
         mock_client_class = Mock()
-        mock_httpclient.InferenceServerClient = mock_client_class
+        mock_grpcclient.InferenceServerClient = mock_client_class
         
         client = Text2TextBaseClient(
             model_name="my_model",
@@ -57,10 +57,10 @@ class TestText2TextBaseClient:
         assert client.chat_template == "Fix grammar: {text}"
         mock_client_class.assert_called_once_with(url="custom-host:9000")
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_preprocess_without_template(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_preprocess_without_template(self, mock_grpcclient):
         """Test preprocessing without prompt template."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = Text2TextBaseClient(model_name="test_model")
         text = "This are a test."
@@ -68,10 +68,10 @@ class TestText2TextBaseClient:
         
         assert result == text
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_preprocess_with_template(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_preprocess_with_template(self, mock_grpcclient):
         """Test preprocessing with chat template."""
-        mock_httpclient.InferenceServerClient = Mock()
+        mock_grpcclient.InferenceServerClient = Mock()
         
         client = Text2TextBaseClient(
             model_name="test_model",
@@ -82,14 +82,14 @@ class TestText2TextBaseClient:
         
         assert result == "Fix grammar: This are a test."
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_predict_basic(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_predict_basic(self, mock_grpcclient):
         """Test basic prediction with text output."""
         # Setup mocks
         mock_client = Mock()
-        mock_httpclient.InferenceServerClient = Mock(return_value=mock_client)
-        mock_httpclient.InferInput = Mock()
-        mock_httpclient.InferRequestedOutput = Mock()
+        mock_grpcclient.InferenceServerClient = Mock(return_value=mock_client)
+        mock_grpcclient.InferInput = Mock()
+        mock_grpcclient.InferRequestedOutput = Mock()
         
         # Mock response
         mock_response = Mock()
@@ -102,14 +102,14 @@ class TestText2TextBaseClient:
         assert result == "This is a test."
         assert mock_client.infer.called
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_predict_string_output(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_predict_string_output(self, mock_grpcclient):
         """Test prediction with string output (not bytes)."""
         # Setup mocks
         mock_client = Mock()
-        mock_httpclient.InferenceServerClient = Mock(return_value=mock_client)
-        mock_httpclient.InferInput = Mock()
-        mock_httpclient.InferRequestedOutput = Mock()
+        mock_grpcclient.InferenceServerClient = Mock(return_value=mock_client)
+        mock_grpcclient.InferInput = Mock()
+        mock_grpcclient.InferRequestedOutput = Mock()
         
         # Mock response with string
         mock_response = Mock()
@@ -121,14 +121,14 @@ class TestText2TextBaseClient:
         
         assert result == "This is a test."
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_predict_empty_output(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_predict_empty_output(self, mock_grpcclient):
         """Test prediction with empty output."""
         # Setup mocks
         mock_client = Mock()
-        mock_httpclient.InferenceServerClient = Mock(return_value=mock_client)
-        mock_httpclient.InferInput = Mock()
-        mock_httpclient.InferRequestedOutput = Mock()
+        mock_grpcclient.InferenceServerClient = Mock(return_value=mock_client)
+        mock_grpcclient.InferInput = Mock()
+        mock_grpcclient.InferRequestedOutput = Mock()
         
         # Mock response with empty output
         mock_response = Mock()
@@ -142,14 +142,14 @@ class TestText2TextBaseClient:
         # Should return original text if no output
         assert result == input_text
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_predict_full_flow(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_predict_full_flow(self, mock_grpcclient):
         """Test full prediction flow with LanguageToolRemoteResult."""
         # Setup mocks
         mock_client = Mock()
-        mock_httpclient.InferenceServerClient = Mock(return_value=mock_client)
-        mock_httpclient.InferInput = Mock()
-        mock_httpclient.InferRequestedOutput = Mock()
+        mock_grpcclient.InferenceServerClient = Mock(return_value=mock_client)
+        mock_grpcclient.InferInput = Mock()
+        mock_grpcclient.InferRequestedOutput = Mock()
         
         # Mock response
         mock_response = Mock()
@@ -165,14 +165,14 @@ class TestText2TextBaseClient:
         assert result.languageCode == "en-US"
         assert len(result.matches) >= 0  # May or may not have matches
     
-    @patch('grammared_language.clients.text2text_base_client.httpclient')
-    def test_call_method(self, mock_httpclient):
+    @patch('grammared_language.clients.text2text_base_client.grpcclient')
+    def test_call_method(self, mock_grpcclient):
         """Test __call__ method works as alias for predict."""
         # Setup mocks
         mock_client = Mock()
-        mock_httpclient.InferenceServerClient = Mock(return_value=mock_client)
-        mock_httpclient.InferInput = Mock()
-        mock_httpclient.InferRequestedOutput = Mock()
+        mock_grpcclient.InferenceServerClient = Mock(return_value=mock_client)
+        mock_grpcclient.InferInput = Mock()
+        mock_grpcclient.InferRequestedOutput = Mock()
         
         # Mock response
         mock_response = Mock()
@@ -200,7 +200,7 @@ class TestText2TextBaseClientFunctional:
             pytest.skip("tritonclient not available")
         
         try:
-            client = httpclient.InferenceServerClient(url="localhost:8000")
+            client = grpcclient.InferenceServerClient(url="localhost:8001")
             if not client.is_server_live():
                 pytest.skip("Triton server is not live")
             
@@ -218,7 +218,7 @@ class TestText2TextBaseClientFunctional:
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
-            triton_port=8000,
+            triton_port=8001,
             chat_template="Fix grammar: {text}"
         )
         
@@ -239,7 +239,7 @@ class TestText2TextBaseClientFunctional:
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
-            triton_port=8000
+            triton_port=8001
         )
         
         test_text = "She go to school yesterday."
@@ -258,7 +258,7 @@ class TestText2TextBaseClientFunctional:
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
-            triton_port=8000,
+            triton_port=8001,
             chat_template="Fix grammar: {text}"
         )
         
@@ -281,7 +281,7 @@ class TestText2TextBaseClientFunctional:
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
-            triton_port=8000,
+            triton_port=8001,
             chat_template="Fix grammar: {text}"
         )
         
@@ -301,7 +301,7 @@ class TestText2TextBaseClientFunctional:
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
-            triton_port=8000,
+            triton_port=8001,
             chat_template="Fix grammar: {text}"
         )
         
@@ -317,7 +317,7 @@ class TestText2TextBaseClientFunctional:
         client = Text2TextBaseClient(
             model_name="coedit_large",
             triton_host="localhost",
-            triton_port=8000,
+            triton_port=8001,
             chat_template="Grammar: {text}"
         )
         
