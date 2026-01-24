@@ -19,7 +19,7 @@ from grammared_language.clients.async_multi_client import AsyncMultiClient
 from grammared_language.clients.gector_client import GectorClient
 from grammared_language.clients.coedit_client import CoEditClient
 # from grammared_language.utils.grammar_correction_extractor import GrammarCorrectionExtractor
-from grammared_language.utils.errant_grammar_correction_extractor import ErrantGrammarCorrectionExtractor
+# from grammared_language.utils.errant_grammar_correction_extractor import ErrantGrammarCorrectionExtractor
 from grammared_language.api.util import SimpleCacheStore
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 from grammared_language.api.grpc_gen import ml_server_pb2, ml_server_pb2_grpc
@@ -49,71 +49,16 @@ coedit_client = CoEditClient(
 # Multi-client for running predictions across all configured clients
 correction_multi_client = AsyncMultiClient(
     clients=[
-        gector_client,
+        # gector_client,
         coedit_client,
     ]
 )
 
-# Initialize ERRANT Grammar Correction Extractor
-errant_extractor = ErrantGrammarCorrectionExtractor(language='en', min_length=1)
+# # Initialize ERRANT Grammar Correction Extractor
+# errant_extractor = ErrantGrammarCorrectionExtractor(language='en', min_length=1)
 
 analyze_cache_store = SimpleCacheStore()
 process_cache_store = SimpleCacheStore()
-
-
-def enrich_matches_with_errant(sentence: str, corrected: str) -> list:
-    """
-    Extract matches with error types using ERRANT.
-    
-    Uses ErrantGrammarCorrectionExtractor to analyze differences between
-    original and corrected text, providing detailed error types.
-    
-    Args:
-        sentence: The original sentence
-        corrected: The corrected sentence
-        
-    Returns:
-        List of Match objects with error type information from ERRANT
-    """
-    if not corrected or sentence == corrected:
-        return []
-    
-    try:
-        # Use ERRANT to extract matches with error types
-        errant_matches = errant_extractor.extract_replacements(sentence, corrected)
-        return errant_matches
-    except Exception as e:
-        logger.warning(f"Error during ERRANT extraction: {str(e)}, returning empty matches")
-        return []
-
-
-def predict_enriched_result(text: str) -> LanguageToolRemoteResult:
-    """
-    Predict grammar corrections using all configured clients, then use ERRANT
-    to extract matches with detailed error type information.
-    """
-    # Get corrected text from all clients and select best
-    predictions = correction_multi_client.predict(text)
-    
-    # Use the first non-empty corrected text (could be improved with voting)
-    corrected = None
-    for pred in predictions:
-        if pred.matches:
-            # Try to reconstruct corrected text from first client
-            # For now, just use ERRANT with original match-based approach
-            break
-    
-    # If we have predictions with matches, try to get corrected text
-    # Otherwise use ERRANT directly with the original merged approach
-    merged_result = correction_multi_client.predict_with_merge(text)
-    
-    # For now, use the basic merged matches since we need corrected text
-    # In a full implementation, clients should return corrected text
-    enriched_matches = merged_result.matches
-    
-    print(f"Enriched matches: {enriched_matches}")
-    merged_result.matches = enriched_matches
-    return merged_result
 
 
 def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
@@ -245,7 +190,7 @@ class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
                     result = process_cache_store.get(text)
                 else:
                     # Predict using both models, merge and enrich, then cache
-                    result = predict_enriched_result(text)
+                    result = correction_multi_client.predict_with_merge(text)
                     process_cache_store.add(text, result)
 
                 # Convert matches to ml_server format
@@ -286,7 +231,7 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             
             sentence_matches = []
             for sentence in request.sentences:
-                enriched_result = predict_enriched_result(sentence)
+                enriched_result = correction_multi_client.predict_with_merge(sentence)
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
@@ -316,7 +261,7 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             
             sentence_matches = []
             for analyzed_sentence in request.sentences:
-                enriched_result = predict_enriched_result(analyzed_sentence.text)
+                enriched_result = correction_multi_client.predict_with_merge(analyzed_sentence.text)
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
