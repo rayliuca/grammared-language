@@ -1,11 +1,10 @@
 import asyncio
 from typing import List, Dict, Any, Optional
-import yaml
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 from grammared_language.clients.base_client import BaseClient
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
+from grammared_language.utils.config_parser import create_clients_from_config
 
 
 class AsyncMultiClient:
@@ -24,66 +23,7 @@ class AsyncMultiClient:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         
         if config_path and not clients:
-            self._init_from_config(config_path)
-    
-    def _init_from_config(self, config_path: str):
-        """Initialize clients from configuration file."""
-        config_file = Path(config_path)
-        if not config_file.exists():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
-        
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
-        
-        for model_name, model_config in config.items():
-            if isinstance(model_config, dict):
-                client = self._create_client_from_config(model_name, model_config)
-                if client:
-                    self.clients.append(client)
-    
-    def _create_client_from_config(self, model_name: str, config: Dict[str, Any]) -> Optional[BaseClient]:
-        """Create a client instance from configuration."""
-        model_type = config.get('type')
-        backend = config.get('backend')
-        
-        try:
-            # Import appropriate client class based on type
-            if model_type == 'gector':
-                from grammared_language.clients.gector_client import GectorClient
-                
-                # Extract parameters for GectorClient
-                model_id = config.get('pretrained_model_name_or_path')
-                triton_model_name = config.get('triton_model_name') if backend == 'triton' else None
-                
-                return GectorClient(
-                    model_id=model_id,
-                    triton_model_name=triton_model_name,
-                    **{k: v for k, v in config.items() if k not in ['type', 'backend', 'pretrained_model_name_or_path', 'triton_model_name']}
-                )
-            
-            elif model_type == 'grammared_classifier':
-                from grammared_language.clients.grammar_classification_client import GrammarClassificationClient
-                
-                # Extract parameters for GrammarClassificationClient
-                model_id = config.get('pretrained_model_name_or_path')
-                triton_model_name = config.get('triton_model_name')
-                triton_host = config.get('triton_hostname', 'localhost')
-                triton_port = config.get('triton_port', 8001)
-                triton_protocol = config.get('triton_protocol', 'grpc')  # Default to gRPC
-                
-                return GrammarClassificationClient(
-                    model_id=model_id,
-                    backend=backend,
-                    triton_model_name=triton_model_name,
-                    triton_host=triton_host,
-                    triton_port=triton_port,
-                    triton_protocol=triton_protocol,
-                    **{k: v for k, v in config.items() if k not in ['type', 'backend', 'pretrained_model_name_or_path', 'triton_model_name', 'triton_hostname', 'triton_port', 'triton_protocol']}
-                )
-        except Exception as e:
-            print(f"Failed to create client for {model_name}: {e}")
-        
-        return None
+            self.clients = create_clients_from_config(config_path)
     
     def add_client(self, client: BaseClient):
         """Add a client to the list."""

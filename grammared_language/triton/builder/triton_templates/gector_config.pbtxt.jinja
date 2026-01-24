@@ -8,6 +8,11 @@ parameters: {
   value: {string_value: "{{ pretrained_model_name_or_path }}"}
 }
 
+parameters: {
+  key: "grammared_language_model_config",
+  value: {string_value: "{{ json_model_config }}"}
+}
+
 input [
   {
     name: "input_ids"

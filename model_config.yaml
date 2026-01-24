@@ -5,13 +5,16 @@ gector_deberta_large:
     triton_model_name: gector_deberta_large
     triton_hostname: localhost
     triton_port: 8001
-grammared_classifier_deberta_v3_small:
-    type: grammared_classifier
+
+coedit_large:
+    type: coedit
     backend: triton
     pretrained_model_name_or_path: "rayliuca/grammared-classifier-deberta-v3-small"
     triton_model_name: grammared-classifier-deberta-v3-small
     triton_hostname: localhost
     triton_port: 8001
+    config:
+        backend: ort
 
 
 #environment:

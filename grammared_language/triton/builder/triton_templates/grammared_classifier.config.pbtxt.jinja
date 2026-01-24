@@ -9,6 +9,11 @@ parameters: {
   value: {string_value: "{{ pretrained_model_name_or_path | default("rayliuca/grammared-classifier-deberta-v3-small") }}"}
 }
 
+parameters: {
+  key: "grammared_language_model_config",
+  value: {string_value: "{{ json_model_config }}"}
+}
+
 input [
   {
     name: "TEXT"

@@ -27,6 +27,7 @@ class TritonGectorPythonModel:
             args: Dictionary containing model configuration
         """
         self.model_config = json.loads(args['model_config'])
+        self.grammared_language_model_config = json.loads(self.model_config.get('grammared_language_model_config', "{}"))
         logger.warning(f"Loaded model config: {self.model_config}")
         # Get model instance device configuration
         model_instance_device_id = args['model_instance_device_id']
