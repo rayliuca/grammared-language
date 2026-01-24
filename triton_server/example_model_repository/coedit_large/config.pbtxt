@@ -4,7 +4,7 @@ backend: "python"
 # Hugging face model path. Parameters must follow this
 # key/value structure
 parameters: {
-  key: "huggingface_model",
+  key: "pretrained_model_name_or_path",
   value: {string_value: "grammarly/coedit-large"}
 }
 
@@ -34,6 +34,17 @@ output [
     dims: [ -1 ]
   }
 ]
+
+# Instance groups - configure based on available resources
+instance_group [
+  {
+    count: 1
+    # kind: KIND_GPU
+    # gpus: [0]
+    kind: KIND_CPU
+  }
+]
+
 
 # Python backend requires these parameters
 parameters: {

@@ -37,7 +37,10 @@ triton = [
   "accelerate",
   "sentencepiece",
   "protobuf",
-  "numpy"
+  "numpy",
+  "optimum",
+  "onnxruntime",
+  "onnx"
 ]
 grpc = [
   "grpcio",

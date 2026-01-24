@@ -30,10 +30,14 @@ class TritonGrammaredClassifierPythonModel:
         self.model_config = json.loads(args['model_config'])
         logger.info(f"Loaded model config: {self.model_config}")
 
+        self.grammared_language_model_config = json.loads(self.model_config.get('grammared_language_model_config', "{}"))
+
         # Get model instance device configuration
         model_device_type = args['model_instance_kind']
         model_instance_device_id = args['model_instance_device_id']
 
+        print("Model instance kind:", model_device_type)
+        print("Model instance device id:", model_instance_device_id)
         # Determine device
         if model_device_type == 'CPU':
             self.device = 'cpu'
@@ -56,17 +60,17 @@ class TritonGrammaredClassifierPythonModel:
 
             logger.info(f"Loading model: {model_name}")
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_name, device_map=self.device,)
 
-            # Move model to device
-            self.model.to(self.device)
+            # # Move model to device
+            # self.model.to(self.device)
             self.model.eval()
 
             # Create calibrated pipeline
             self.pipeline = CalibratedTextClassificationPipeline(
                 model=self.model,
                 tokenizer=self.tokenizer,
-                device=self.device
+                # device=self.device
             )
 
             logger.info(f"Successfully loaded model {model_name} on device {self.device}")

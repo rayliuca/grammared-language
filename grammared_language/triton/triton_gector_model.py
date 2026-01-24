@@ -30,10 +30,12 @@ class TritonGectorPythonModel:
         self.grammared_language_model_config = json.loads(self.model_config.get('grammared_language_model_config', "{}"))
         logger.warning(f"Loaded model config: {self.model_config}")
         # Get model instance device configuration
+
+        model_device_type = args['model_instance_kind']
         model_instance_device_id = args['model_instance_device_id']
 
         # Determine device
-        if model_instance_device_id == 'CPU':
+        if model_device_type == 'CPU':
             self.device = 'cpu'
         else:
             self.device = f'cuda:{model_instance_device_id}'
