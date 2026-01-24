@@ -18,40 +18,19 @@ class CoEditClient(Text2TextBaseClient):
         triton_port: Triton server port (default: 8001 for gRPC, 8000 for HTTP)
         triton_model_version: Model version (default: "1")
         triton_protocol: Communication protocol - "grpc" or "http" (default: "grpc")
-        task: Task type for instruction template. Options:
-            - "grammar": Fix grammatical errors (default)
-            - "fluency": Make the text more fluent
-            - "coherence": Make the text more coherent
-            - "clarity": Make the text more clear
-            - "paraphrase": Paraphrase the text
-            - "neutralize": Make the text more neutral
-            - "simplify": Simplify the text
-            - "formalize": Make the text more formal
-            - "update": Update information in the text
-            - None: No task prefix (model receives raw text)
-        chat_template: Custom chat template to override task-based templates.
-                      Use {text} as placeholder. Example: "Fix grammar: {text}"
-                      For chat-style: "<|user|>\n{text}<|assistant|>\n"
+        prompt_template: Optional template string for formatting input (Jinja2-compatible).
+                      Use {{ text }} as placeholder. Defaults to "Fix grammatical errors: {{ text }}".
+                      Example: "Fix grammar: {{ text }}"
+                      For chat-style: "<|user|>\n{{ text }}<|assistant|>\n"
         **kwargs: Additional arguments passed to Text2TextBaseClient
     
     Example:
-        >>> client = CoEditClient(task="grammar")
+        >>> client = CoEditClient()
         >>> result = client.predict("She go to the store yesterday.")
         >>> print(result.matches)
     """
-    
-    # CoEdit task prefixes based on the paper
-    TASK_PROMPTS = {
-        "grammar": "Fix grammatical errors: {text}",
-        "fluency": "Make the text more fluent: {text}",
-        "coherence": "Make the text more coherent: {text}",
-        "clarity": "Make the text more clear: {text}",
-        "paraphrase": "Paraphrase: {text}",
-        "neutralize": "Make the text more neutral: {text}",
-        "simplify": "Simplify: {text}",
-        "formalize": "Make the text more formal: {text}",
-        "update": "Update: {text}",
-    }
+
+    DEFAULT_PROMPT_TEMPLATE = "Fix grammatical errors: {{ text }}"
     
     def __init__(
         self,
@@ -61,22 +40,9 @@ class CoEditClient(Text2TextBaseClient):
         triton_port: int = 8001,  # Default to gRPC port
         triton_model_version: str = "1",
         triton_protocol: str = "grpc",  # "grpc" or "http"
-        task: Optional[str] = "grammar",
-        chat_template: Optional[str] = None,
+        prompt_template: str = DEFAULT_PROMPT_TEMPLATE,
         **kwargs
     ):
-        # Determine chat template
-        if chat_template is not None:
-            template = chat_template
-        elif task is not None:
-            if task not in self.TASK_PROMPTS:
-                raise ValueError(
-                    f"Invalid task: {task}. Must be one of: {list(self.TASK_PROMPTS.keys())} or None"
-                )
-            template = self.TASK_PROMPTS[task]
-        else:
-            template = None
-        
         # Initialize parent with CoEdit-specific defaults
         super().__init__(
             model_name=model_name,
@@ -86,8 +52,6 @@ class CoEditClient(Text2TextBaseClient):
             triton_protocol=triton_protocol,
             input_name="text_input",
             output_name="text_output",
-            chat_template=template,
+            prompt_template=prompt_template,
             **kwargs
         )
-        
-        self.task = task

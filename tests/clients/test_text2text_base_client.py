@@ -31,7 +31,7 @@ class TestText2TextBaseClient:
         assert client.triton_model_version == "1"
         assert client.input_name == "text_input"
         assert client.output_name == "text_output"
-        assert client.chat_template is None
+        assert client.prompt_template is None
         mock_client_class.assert_called_once_with(url="localhost:8001")
     
     @patch('grammared_language.clients.text2text_base_client.grpcclient')
@@ -47,14 +47,14 @@ class TestText2TextBaseClient:
             triton_model_version="2",
             input_name="custom_input",
             output_name="custom_output",
-            chat_template="Fix grammar: {text}"
+            prompt_template="Fix grammar: {{ text }}"
         )
         
         assert client.model_name == "my_model"
         assert client.triton_model_version == "2"
         assert client.input_name == "custom_input"
         assert client.output_name == "custom_output"
-        assert client.chat_template == "Fix grammar: {text}"
+        assert client.prompt_template == "Fix grammar: {{ text }}"
         mock_client_class.assert_called_once_with(url="custom-host:9000")
     
     @patch('grammared_language.clients.text2text_base_client.grpcclient')
@@ -75,7 +75,7 @@ class TestText2TextBaseClient:
         
         client = Text2TextBaseClient(
             model_name="test_model",
-            chat_template="Fix grammar: {text}"
+            prompt_template="Fix grammar: {{ text }}"
         )
         text = "This are a test."
         result = client._preprocess(text)
@@ -219,7 +219,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8001,
-            chat_template="Fix grammar: {text}"
+            prompt_template="Fix grammar: {{ text }}"
         )
         
         test_text = "This are a test."
@@ -259,7 +259,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8001,
-            chat_template="Fix grammar: {text}"
+            prompt_template="Fix grammar: {{ text }}"
         )
         
         test_text = "She go to the store and buy some milk yesterday."
@@ -282,7 +282,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8001,
-            chat_template="Fix grammar: {text}"
+            prompt_template="Fix grammar: {{ text }}"
         )
         
         test_text = "She went to the store yesterday."
@@ -302,7 +302,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8001,
-            chat_template="Fix grammar: {text}"
+            prompt_template="Fix grammar: {{ text }}"
         )
         
         test_text = "I has a car."
@@ -318,7 +318,7 @@ class TestText2TextBaseClientFunctional:
             model_name="coedit_large",
             triton_host="localhost",
             triton_port=8001,
-            chat_template="Grammar: {text}"
+            prompt_template="Grammar: {{ text }}"
         )
         
         test_text = "They was happy."

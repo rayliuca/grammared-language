@@ -1,6 +1,7 @@
 from .base_client import BaseClient
 from typing import Optional
 import numpy as np
+import jinja2
 
 try:
     import tritonclient.http as httpclient
@@ -41,9 +42,9 @@ class Text2TextBaseClient(BaseClient):
         triton_protocol: Communication protocol - "grpc" or "http" (default: "grpc")
         input_name: Name of the input tensor (default: "text_input")
         output_name: Name of the output tensor (default: "text_output")
-        chat_template: Optional template string for formatting input (HuggingFace-compatible).
-                      Use {text} as placeholder. Example: "Fix grammar: {text}"
-                      For chat-style models, use format like: "<|user|>\n{text}<|assistant|>\n"
+        prompt_template: Optional template string for formatting input (Jinja2-compatible).
+                      Use {{ text }} as placeholder. Example: "Fix grammar: {{ text }}"
+                      For chat-style models, use format like: "<|user|>\n{{ text }}<|assistant|>\n"
     """
     
     def __init__(
@@ -56,7 +57,7 @@ class Text2TextBaseClient(BaseClient):
         triton_protocol: str = "grpc",  # "grpc" or "http"
         input_name: str = "text_input",
         output_name: str = "text_output",
-        chat_template: Optional[str] = None,
+        prompt_template: Optional[str] = None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -72,7 +73,8 @@ class Text2TextBaseClient(BaseClient):
         self.triton_protocol = triton_protocol.lower()
         self.input_name = input_name
         self.output_name = output_name
-        self.chat_template = chat_template
+        self.prompt_template = prompt_template
+        self._template = jinja2.Template(prompt_template) if prompt_template else None
         
         # Initialize Triton client based on protocol
         triton_url = f"{triton_host}:{triton_port}"
@@ -92,9 +94,9 @@ class Text2TextBaseClient(BaseClient):
             self._triton_client = httpclient.InferenceServerClient(url=triton_url)
         
     def _preprocess(self, text: str) -> str:
-        """Apply chat template if configured."""
-        if self.chat_template:
-            return self.chat_template.format(text=text)
+        """Apply prompt template if configured."""
+        if self._template:
+            return self._template.render(text=text)
         return text
     
     def _predict(self, text: str) -> str:

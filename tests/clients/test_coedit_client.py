@@ -21,7 +21,7 @@ class TestCoEditClient:
     
     @patch('grammared_language.clients.text2text_base_client.grpcclient')
     def test_initialization_default(self, mock_grpcclient):
-        """Test default initialization with grammar task."""
+        """Test default initialization."""
         mock_client_class = Mock()
         mock_grpcclient.InferenceServerClient = mock_client_class
         
@@ -29,8 +29,7 @@ class TestCoEditClient:
         
         assert client.model_name == "coedit_large"
         assert client.triton_model_version == "1"
-        assert client.task == "grammar"
-        assert client.chat_template == "Fix grammatical errors: {text}"
+        assert client.prompt_template == "Fix grammatical errors: {{ text }}"
         mock_client_class.assert_called_once_with(url="localhost:8001")
     
     @patch('grammared_language.clients.text2text_base_client.grpcclient')
@@ -45,126 +44,23 @@ class TestCoEditClient:
         )
         
         assert client.model_name == "coedit_xl"
-        assert client.task == "grammar"
     
     @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_fluency(self, mock_grpcclient):
-        """Test fluency task prompt."""
+    def test_initialization_custom_prompt(self, mock_grpcclient):
+        """Test custom prompt template."""
         mock_grpcclient.InferenceServerClient = Mock()
         
-        client = CoEditClient(task="fluency")
+        custom = "Custom instruction: {{ text }}"
+        client = CoEditClient(prompt_template=custom)
         
-        assert client.task == "fluency"
-        assert client.chat_template == "Make the text more fluent: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_coherence(self, mock_grpcclient):
-        """Test coherence task prompt."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task="coherence")
-        
-        assert client.task == "coherence"
-        assert client.chat_template == "Make the text more coherent: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_clarity(self, mock_grpcclient):
-        """Test clarity task prompt."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task="clarity")
-        
-        assert client.task == "clarity"
-        assert client.chat_template == "Make the text more clear: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_paraphrase(self, mock_grpcclient):
-        """Test paraphrase task prompt."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task="paraphrase")
-        
-        assert client.task == "paraphrase"
-        assert client.chat_template == "Paraphrase: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_neutralize(self, mock_grpcclient):
-        """Test neutralize task prompt."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task="neutralize")
-        
-        assert client.task == "neutralize"
-        assert client.chat_template == "Make the text more neutral: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_simplify(self, mock_grpcclient):
-        """Test simplify task prompt."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task="simplify")
-        
-        assert client.task == "simplify"
-        assert client.chat_template == "Simplify: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_formalize(self, mock_grpcclient):
-        """Test formalize task prompt."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task="formalize")
-        
-        assert client.task == "formalize"
-        assert client.chat_template == "Make the text more formal: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_update(self, mock_grpcclient):
-        """Test update task prompt."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task="update")
-        
-        assert client.task == "update"
-        assert client.chat_template == "Update: {text}"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_task_none(self, mock_grpcclient):
-        """Test no task (raw text input)."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        client = CoEditClient(task=None)
-        
-        assert client.task is None
-        assert client.chat_template is None
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_custom_prompt(self, mock_grpcclient):
-        """Test custom chat template overrides task."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        custom = "Custom instruction: {text}"
-        client = CoEditClient(task="grammar", chat_template=custom)
-        
-        assert client.chat_template == custom
-        assert client.task == "grammar"  # Task is still stored
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_invalid_task(self, mock_grpcclient):
-        """Test invalid task raises ValueError."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        with pytest.raises(ValueError) as exc_info:
-            CoEditClient(task="invalid_task")
-        
-        assert "Invalid task" in str(exc_info.value)
-        assert "invalid_task" in str(exc_info.value)
+        assert client.prompt_template == custom
     
     @patch('grammared_language.clients.text2text_base_client.grpcclient')
     def test_preprocess_applies_template(self, mock_grpcclient):
-        """Test preprocessing applies chat template."""
+        """Test preprocessing applies prompt template."""
         mock_grpcclient.InferenceServerClient = Mock()
         
-        client = CoEditClient(task="grammar")
+        client = CoEditClient()
         text = "She go to store."
         processed = client._preprocess(text)
         
@@ -184,28 +80,12 @@ class TestCoEditClient:
         mock_response.as_numpy.return_value = np.array([b"She went to the store."], dtype=object)
         mock_client.infer.return_value = mock_response
         
-        client = CoEditClient(task="grammar")
+        client = CoEditClient()
         result = client.predict("She go to store.")
         
         assert isinstance(result, LanguageToolRemoteResult)
         assert result.language == "English"
         assert result.languageCode == "en-US"
-    
-    @patch('grammared_language.clients.text2text_base_client.grpcclient')
-    def test_all_tasks_valid(self, mock_grpcclient):
-        """Test that all documented tasks are valid."""
-        mock_grpcclient.InferenceServerClient = Mock()
-        
-        tasks = [
-            "grammar", "fluency", "coherence", "clarity",
-            "paraphrase", "neutralize", "simplify", "formalize", "update"
-        ]
-        
-        for task in tasks:
-            client = CoEditClient(task=task)
-            assert client.task == task
-            assert client.chat_template is not None
-            assert "{text}" in client.chat_template
 
 
 @pytest.mark.skipif(
@@ -237,7 +117,7 @@ class TestCoEditClientFunctional:
     
     def test_functional_grammar_correction(self, triton_ready):
         """Test grammar correction task."""
-        client = CoEditClient(task="grammar")
+        client = CoEditClient()
         
         test_text = "She go to the store yesterday."
         result = client.predict(test_text)
@@ -246,7 +126,7 @@ class TestCoEditClientFunctional:
         assert result.language == "English"
         assert result.languageCode == "en-US"
         
-        print(f"\nGrammar Task:")
+        print(f"\nGrammar Correction:")
         print(f"  Original: {test_text}")
         print(f"  Matches: {len(result.matches)}")
         for match in result.matches:
@@ -254,106 +134,15 @@ class TestCoEditClientFunctional:
             suggestions = [r.replacement for r in match.suggestedReplacements] if match.suggestedReplacements else []
             print(f"    '{orig}' → {suggestions}")
     
-    def test_functional_fluency(self, triton_ready):
-        """Test fluency improvement task."""
-        client = CoEditClient(task="fluency")
+    def test_functional_custom_prompt(self, triton_ready):
+        """Test custom prompt improvement."""
+        client = CoEditClient(prompt_template="Make the text more fluent: {{ text }}")
         
         test_text = "The thing is that I kind of maybe want to go there sometime."
         result = client.predict(test_text)
         
         assert isinstance(result, LanguageToolRemoteResult)
         
-        print(f"\nFluency Task:")
-        print(f"  Original: {test_text}")
-        print(f"  Matches: {len(result.matches)}")
-    
-    def test_functional_clarity(self, triton_ready):
-        """Test clarity improvement task."""
-        client = CoEditClient(task="clarity")
-        
-        test_text = "It's not uncommon to find people who don't dislike it."
-        result = client.predict(test_text)
-        
-        assert isinstance(result, LanguageToolRemoteResult)
-        
-        print(f"\nClarity Task:")
-        print(f"  Original: {test_text}")
-        print(f"  Matches: {len(result.matches)}")
-    
-    def test_functional_paraphrase(self, triton_ready):
-        """Test paraphrase task."""
-        client = CoEditClient(task="paraphrase")
-        
-        test_text = "The cat sat on the mat."
-        result = client.predict(test_text)
-        
-        assert isinstance(result, LanguageToolRemoteResult)
-        
-        print(f"\nParaphrase Task:")
-        print(f"  Original: {test_text}")
-        print(f"  Matches: {len(result.matches)}")
-    
-    def test_functional_formalize(self, triton_ready):
-        """Test formalization task."""
-        client = CoEditClient(task="formalize")
-        
-        test_text = "gonna check it out later"
-        result = client.predict(test_text)
-        
-        assert isinstance(result, LanguageToolRemoteResult)
-        
-        print(f"\nFormalize Task:")
-        print(f"  Original: {test_text}")
-        print(f"  Matches: {len(result.matches)}")
-    
-    def test_functional_simplify(self, triton_ready):
-        """Test simplification task."""
-        client = CoEditClient(task="simplify")
-        
-        test_text = "The implementation of the aforementioned methodology necessitates careful consideration."
-        result = client.predict(test_text)
-        
-        assert isinstance(result, LanguageToolRemoteResult)
-        
-        print(f"\nSimplify Task:")
-        print(f"  Original: {test_text}")
-        print(f"  Matches: {len(result.matches)}")
-    
-    def test_functional_call_method(self, triton_ready):
-        """Test __call__ method."""
-        client = CoEditClient(task="grammar")
-        
-        test_text = "I has a car."
-        result = client(test_text)
-        
-        assert isinstance(result, LanguageToolRemoteResult)
-        
-        print(f"\nCall Method:")
-        print(f"  Original: {test_text}")
-        print(f"  Matches: {len(result.matches)}")
-    
-    def test_functional_no_template(self, triton_ready):
-        """Test with no task template."""
-        client = CoEditClient(task=None)
-        
-        test_text = "She go to school."
-        result = client.predict(test_text)
-        
-        assert isinstance(result, LanguageToolRemoteResult)
-        
-        print(f"\nNo Template:")
-        print(f"  Original: {test_text}")
-        print(f"  Matches: {len(result.matches)}")
-    
-    def test_functional_custom_prompt(self, triton_ready):
-        """Test with custom chat template."""
-        client = CoEditClient(chat_template="Edit: {text}")
-        
-        test_text = "They was happy."
-        result = client.predict(test_text)
-        
-        assert isinstance(result, LanguageToolRemoteResult)
-        
-        print(f"\nCustom Prompt:")
+        print(f"\nCustom Prompt (Fluency):")
         print(f"  Original: {test_text}")
         print(f"  Matches: {len(result.matches)}")

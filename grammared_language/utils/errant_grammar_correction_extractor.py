@@ -92,6 +92,7 @@ class ErrantGrammarCorrectionExtractor:
             
             # Get the replacement text (use character-based string from edit)
             replacement = edit.c_str
+            error_type = edit.type
             
             # Handle insertions (where o_start == o_end, length == 0)
             # Convert to a replacement by including adjacent token
@@ -106,9 +107,10 @@ class ErrantGrammarCorrectionExtractor:
             # - replacement cannot be empty (unless it's a deletion, which we skip)
             if length >= self.min_length and replacement.strip():
                 # Create error message from ERRANT error type
-                error_type = edit.type if edit.type else "UNKNOWN"
                 if ":" in error_type:
                     error_type = ":".join(error_type.split(":")[1:])
+                else:
+                    error_type = "OTHER"
                 error_type = ERROR_TYPE_LABELS.get(error_type, error_type)
                 original_text = edit.o_str if edit.o_str else f"[insert at position {edit.o_start}]"
                 message = error_type
@@ -124,7 +126,7 @@ class ErrantGrammarCorrectionExtractor:
                         ],
                         offset=offset,
                         length=length,
-                        type=MatchType.Other,  # Grammar errors typically map to "Other"
+                        type=MatchType.Other,  # Grammar errors typically map to "Other". Tho this has no effect in LT.
                         id=error_type
                     )
                 )
