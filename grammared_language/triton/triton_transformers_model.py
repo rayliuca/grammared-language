@@ -24,8 +24,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from ast import Load
+import logging
 import os
 import json
+from xml.parsers.expat import model
 
 import numpy as np
 import torch
@@ -33,8 +35,13 @@ import transformers
 import triton_python_backend_utils as pb_utils
 
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)  # Set default level to WARNING
+
+
+
 DEFAULT_MODEL_BACKEND = "transformers"
-def load_pipeline_from_config(model_config, task="text-generation", backend:str="transformers", fallback:bool=True, **kwargs):
+def load_pipeline_from_config(model_config, task="text2text-generation", backend:str="transformers", fallback:bool=True, **kwargs):
     """Load a HuggingFace model based on the provided configuration.
 
     Args:
@@ -46,11 +53,11 @@ def load_pipeline_from_config(model_config, task="text-generation", backend:str=
     # Extract model parameters from configuration
     model_params = model_config.get("parameters", {})
     default_hf_model = "HuggingFaceTB/SmolLM2-135M"
-
-    # Check for user-specified model name in model config parameters
-    hf_model = model_params.get("pretrained_model_name_or_path", {}).get(
-        "string_value", default_hf_model
-    )
+    if 'pretrained_model_name_or_path' in model_config['parameters']:
+        hf_model = model_config['parameters']['pretrained_model_name_or_path']['string_value']
+    else:
+        hf_model = default_hf_model
+    logger.warning(f"Loading model: {hf_model} with backend: {backend}")
 
     try:
         if backend == "ort":
@@ -60,8 +67,8 @@ def load_pipeline_from_config(model_config, task="text-generation", backend:str=
             pipeline = transformers.pipeline(task=task, model=hf_model, **kwargs)
     except Exception as e:
         if fallback and backend != DEFAULT_MODEL_BACKEND:
-            print(f"Failed to load model {hf_model}: {str(e)} using backend: {backend}. Falling back to default model backend {DEFAULT_MODEL_BACKEND}.")
-            pipeline = transformers.pipeline(task=task, model=default_hf_model, **kwargs)
+            logger.warning(f"Failed to load model {hf_model}: {str(e)} using backend: {backend}. Falling back to default model backend {DEFAULT_MODEL_BACKEND}.")
+            pipeline = transformers.pipeline(task=task, model=hf_model, **kwargs)
         else:
             raise RuntimeError(f"Failed to load model {hf_model}: {str(e)}")
     return pipeline

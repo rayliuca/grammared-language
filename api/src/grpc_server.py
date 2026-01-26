@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Model initialization
 model_id = "gotutiyan/gector-deberta-large-5k"
 gector_client = GectorClient(
-    model_id=model_id,
+    pretrained_model_name_or_path=model_id,
     triton_model_name="gector_deberta_large",
     verb_dict_path='data/verb-form-vocab.txt',
     keep_confidence=0,

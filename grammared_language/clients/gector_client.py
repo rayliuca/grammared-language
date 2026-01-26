@@ -26,7 +26,7 @@ except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
 class GectorClient(BaseClient):
-    def __init__(self, model_id: str, triton_model_name: str=None, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
+    def __init__(self, pretrained_model_name_or_path: str, triton_model_name: str=None, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
         super().__init__(**kwargs)
         
         if not GECTOR_AVAILABLE:
@@ -36,13 +36,13 @@ class GectorClient(BaseClient):
             raise ImportError("transformers package is required for GectorClient. Install it with: pip install transformers")
         
         if triton_model_name is None:
-            self.model = GECToR.from_pretrained(model_id)
+            self.model = GECToR.from_pretrained(pretrained_model_name_or_path)
         else:
             if GECToRTriton is None:
                 raise ImportError("GECToRTriton is not available in your gector installation. Please upgrade gector or use the standard model.")
-            self.model = GECToRTriton.from_pretrained(model_id, model_name=triton_model_name)
+            self.model = GECToRTriton.from_pretrained(pretrained_model_name_or_path, model_name=triton_model_name)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path)
         self.encode, self.decode = load_verb_dict(verb_dict_path)
 
         self.pred_config = {

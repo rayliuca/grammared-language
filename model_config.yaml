@@ -1,35 +1,27 @@
 gector_deberta_large:
     type: gector
     backend: triton
-    pretrained_model_name_or_path: "gotutiyan/gector-deberta-large-5k"
-    triton_model_name: gector_deberta_large
-    triton_hostname: localhost
-    triton_port: 8001
+    serving_config:
+        triton_hostname: localhost
+        triton_port: 8001
+        pretrained_model_name_or_path: "gotutiyan/gector-deberta-large-5k"
+        triton_model_name: gector_deberta_large
+        device: cpu # cpu, cuda, or auto
 
 coedit_large:
     type: coedit
     backend: triton
-    pretrained_model_name_or_path: "rayliuca/grammared-classifier-deberta-v3-small"
-    triton_model_name: grammared-classifier-deberta-v3-small
-    triton_hostname: localhost
-    triton_port: 8001
-    config:
+    serving_config:
+        triton_hostname: localhost
+        triton_port: 8001
+        pretrained_model_name_or_path: "grammarly/coedit-large"
+        triton_model_name: coedit
         backend: ort
-
-
-#environment:
-#  # gector_deberta_large model
-#  - GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__TYPE=gector
-#  - GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__BACKEND=triton
-#  - GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__PRETRAINED_MODEL_NAME_OR_PATH=gotutiyan/gector-deberta-large-5k
-#  - GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__TRITON_MODEL_NAME=gector_deberta_large
-#  - GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__TRITON_HOSTNAME=localhost
-#  - GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__TRITON_PORT=8001
-#
-#  # grammared_classifier_deberta_v3_small model
-#  - GRAMMARED_LANGUAGE__MODELS__GRAMMARED_CLASSIFIER_DEBERTA_V3_SMALL__TYPE=grammared_classifier
-#  - GRAMMARED_LANGUAGE__MODELS__GRAMMARED_CLASSIFIER_DEBERTA_V3_SMALL__BACKEND=triton
-#  - GRAMMARED_LANGUAGE__MODELS__GRAMMARED_CLASSIFIER_DEBERTA_V3_SMALL__PRETRAINED_MODEL_NAME_OR_PATH=rayliuca/grammared-classifier-deberta-v3-small
-#  - GRAMMARED_LANGUAGE__MODELS__GRAMMARED_CLASSIFIER_DEBERTA_V3_SMALL__TRITON_MODEL_NAME=grammared-classifier-deberta-v3-small
-#  - GRAMMARED_LANGUAGE__MODELS__GRAMMARED_CLASSIFIER_DEBERTA_V3_SMALL__TRITON_HOSTNAME=localhost
-#  - GRAMMARED_LANGUAGE__MODELS__GRAMMARED_CLASSIFIER_DEBERTA_V3_SMALL__TRITON_PORT=8001
+        device: cpu # cpu, cuda, or auto
+    model_config:
+        load_in_4bit: false
+    model_inference_config:
+        temperature: 0.8
+    grammared_config:
+        prompt_template: "Fix grammatical errors: {{ text }}"
+        

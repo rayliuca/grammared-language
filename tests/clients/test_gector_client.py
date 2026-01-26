@@ -63,7 +63,7 @@ class TestGectorClientUnit:
         
         # Create client
         client = GectorClient(
-            model_id="test-model",
+            pretrained_model_name_or_path="test-model",
             verb_dict_path="test-vocab.txt"
         )
         
@@ -95,7 +95,7 @@ class TestGectorClientUnit:
         
         # Create client with triton model name
         client = GectorClient(
-            model_id="test-model",
+            pretrained_model_name_or_path="test-model",
             triton_model_name="gector_bert",
             verb_dict_path="test-vocab.txt"
         )
@@ -120,7 +120,7 @@ class TestGectorClientUnit:
         mock_predict.return_value = ["This is corrected text."]
         
         # Create client and test predict
-        client = GectorClient(model_id="test-model", verb_dict_path="test-vocab.txt")
+        client = GectorClient(pretrained_model_name_or_path="test-model", verb_dict_path="test-vocab.txt")
         result = client._predict("This is test text")
         
         # Verify predict was called
@@ -143,7 +143,7 @@ class TestGectorClientUnit:
         mock_predict.return_value = ["This is the corrected text."]
         
         # Create client
-        client = GectorClient(model_id="test-model", verb_dict_path="test-vocab.txt")
+        client = GectorClient(pretrained_model_name_or_path="test-model", verb_dict_path="test-vocab.txt")
         
         # Test full predict
         result = client.predict("This is test text")
@@ -171,7 +171,7 @@ class TestGectorClientUnit:
         mock_predict.return_value = ["Corrected text."]
         
         # Create client and test callable
-        client = GectorClient(model_id="test-model", verb_dict_path="test-vocab.txt")
+        client = GectorClient(pretrained_model_name_or_path="test-model", verb_dict_path="test-vocab.txt")
         result = client("Test text")
         
         # Verify result
@@ -204,7 +204,7 @@ class TestGectorClientNonHermetic:
         
         try:
             client = GectorClient(
-                model_id=model_id,
+                pretrained_model_name_or_path=model_id,
                 verb_dict_path=verb_dict_path,
                 triton_model_name=None
             )
@@ -225,7 +225,7 @@ class TestGectorClientNonHermetic:
                 pytest.skip("Triton server is not live")
             
             client = GectorClient(
-                model_id=model_id,
+                pretrained_model_name_or_path=model_id,
                 verb_dict_path=verb_dict_path,
                 triton_model_name="gector_bert"
             )
@@ -314,7 +314,7 @@ class TestGectorClientNonHermetic:
         from grammared_language.clients.gector_client import GectorClient
         
         client = GectorClient(
-            model_id=model_id,
+            pretrained_model_name_or_path=model_id,
             verb_dict_path=verb_dict_path,
             keep_confidence=0.5,
             min_error_prob=0.1,

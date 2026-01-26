@@ -148,7 +148,7 @@ class TestAsyncMultiClientWithManualClients:
         # Try to add GectorClient
         try:
             gector = GectorClient(
-                model_id="gotutiyan/gector-deberta-large-5k",
+                pretrained_model_name_or_path="gotutiyan/gector-deberta-large-5k",
                 triton_model_name="gector_deberta_large"
             )
             clients.append(gector)

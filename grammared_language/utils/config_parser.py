@@ -3,9 +3,49 @@
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Literal, Union
 import yaml
+import os
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from grammared_language.clients.base_client import BaseClient
+
+import logging
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class ServingConfig(BaseModel):
+    """Configuration for model serving settings."""
+    
+    model_config = ConfigDict(extra='allow')
+    
+    triton_hostname: Optional[str] = 'localhost'
+    triton_port: Optional[int] = 8001
+    triton_model_name: Optional[str] = None
+    triton_protocol: Literal['grpc', 'http'] = 'grpc'  # 'grpc' or 'http'
+    pretrained_model_name_or_path: Optional[str] = None
+    backend: Optional[str] = None
+    device: Optional[str] = None
+    
+
+
+class ModelInferenceConfig(BaseModel):
+    """Configuration for model inference settings."""
+    
+    model_config = ConfigDict(extra='allow')
+    
+    temperature: Optional[float] = None
+    max_length: Optional[int] = None
+    num_beams: Optional[int] = None
+
+
+class GrammaredConfig(BaseModel):
+    """Configuration for grammared-specific settings."""
+    
+    model_config = ConfigDict(extra='allow')
+    
+    prompt_template: Optional[str] = None
+    error_classifier: Optional[str] = None
 
 
 class BaseModelConfig(BaseModel):
@@ -13,26 +53,18 @@ class BaseModelConfig(BaseModel):
     
     model_config = ConfigDict(extra='allow')  # Allow additional fields for model-specific configs
     
-    # type: Literal['gector', 'grammared_classifier', 'coedit']
     type: str
     backend: Literal[
         'triton', 
         # 'local', # Local inference
         'openai' # OpenAI compatiable api
         ] = 'triton'
-    pretrained_model_name_or_path: Optional[str] = None
-    triton_model_name: Optional[str] = None
-    triton_hostname: Optional[str] = 'localhost'
-    triton_port: Optional[int] = 8001
-    triton_protocol: Optional[Literal[
-        'grpc', 
-        # 'http'
-        ]] = 'grpc'
-
-    config: Optional[Dict[str, Any]] = None
-    model_kwargs: Optional[Dict[str, Any]] = None
-    error_classifier: Optional[str] = None # the name of another model
-
+    
+    # Nested config format
+    serving_config: ServingConfig
+    model_config_dict: Optional[Dict[str, Any]] = Field(default=None, alias='model_config')
+    model_inference_config: Optional[ModelInferenceConfig] = None
+    grammared_config: Optional[GrammaredConfig] = None
 
 class GectorConfig(BaseModelConfig):
     """Configuration for GECToR models."""
@@ -102,7 +134,7 @@ class ModelsConfig(BaseModel):
         return cls(models=models)
 
 
-def load_config(config_path: str) -> ModelsConfig:
+def load_config_from_file(config_path: str) -> ModelsConfig:
     """
     Load configuration from a YAML file.
     
@@ -123,6 +155,81 @@ def load_config(config_path: str) -> ModelsConfig:
         config_dict = yaml.safe_load(f)
     
     return ModelsConfig.from_dict(config_dict)
+
+
+def load_config_from_env(prefix: str = "GRAMMARED_LANGUAGE") -> ModelsConfig:
+    """
+    Load configuration from environment variables.
+    
+    Environment variables should follow the pattern:
+    {PREFIX}__MODELS__{MODEL_NAME}__{KEY}={VALUE}
+    
+    Example:
+        GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__TYPE=gector
+        GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__BACKEND=triton
+        GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__SERVING_CONFIG__TRITON_HOSTNAME=localhost
+    
+    Args:
+        prefix: Environment variable prefix (default: "GRAMMARED_LANGUAGE")
+        
+    Returns:
+        ModelsConfig containing validated model configurations
+        
+    Raises:
+        ValueError: If no matching environment variables are found
+    """
+    prefix_with_sep = f"{prefix}__"
+    config_dict: Dict[str, Any] = {}
+    
+    # Find all environment variables with the prefix
+    env_vars = {k: v for k, v in os.environ.items() if k.startswith(prefix_with_sep)}
+    
+    if not env_vars:
+        raise ValueError(f"No environment variables found with prefix: {prefix_with_sep}")
+    
+    for env_key, env_value in env_vars.items():
+        # Remove prefix and split by double underscore
+        key_parts = env_key[len(prefix_with_sep):].split("__")
+        
+        # Convert keys to lowercase for model names
+        key_parts = [part.lower() for part in key_parts]
+        
+        # Build nested dictionary
+        current = config_dict
+        for i, part in enumerate(key_parts[:-1]):
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        
+        # Set the final value, attempting type conversion
+        final_key = key_parts[-1]
+        
+        # Try to convert value to appropriate type
+        try:
+            # Try boolean
+            if env_value.lower() in ('true', 'false'):
+                current[final_key] = env_value.lower() == 'true'
+            # Try integer
+            elif env_value.isdigit():
+                current[final_key] = int(env_value)
+            # Try float
+            elif '.' in env_value and env_value.replace('.', '').replace('-', '').isdigit():
+                current[final_key] = float(env_value)
+            # Keep as string
+            else:
+                current[final_key] = env_value
+        except (ValueError, AttributeError):
+            current[final_key] = env_value
+    
+    # Extract models dict (skip the "models" key level)
+    models_dict = config_dict.get("models", {})
+    
+    if not models_dict:
+        raise ValueError(f"No models configuration found in environment variables")
+    
+    logger.info(f"Loaded configuration for {len(models_dict)} model(s) from environment variables")
+    
+    return ModelsConfig.from_dict(models_dict)
 
 
 def create_client_from_config(
@@ -151,46 +258,38 @@ def create_client_from_config(
         if isinstance(config, GectorConfig):
             from grammared_language.clients.gector_client import GectorClient
             
-            triton_model_name = config.triton_model_name if config.backend == 'triton' else None
+            # GectorClient expects model_id and triton_model_name
+            client_params = vars(config.serving_config)
+            client_params.update(vars(config.grammared_config) if config.grammared_config else {})
             
-            input_fields = {
-                k: v for k, v in config.model_dump().items() 
-                if k not in ['type']
-            }
-            
-            return GectorClient(**input_fields)
+            return GectorClient(**client_params)
         
         elif isinstance(config, GrammaredClassifierConfig):
             from grammared_language.clients.grammar_classification_client import GrammarClassificationClient
-            
-            input_fields = {
-                k: v for k, v in config.model_dump().items() 
-                if k not in ['type']
-            }
-            
-            return GrammarClassificationClient(**input_fields)
+                        
+            # Filter out non-client parameters
+            client_params = vars(config.serving_config)
+            client_params.update(vars(config.grammared_config) if config.grammared_config else {})
+
+            return GrammarClassificationClient(**client_params)
             
         elif isinstance(config, CoEditConfig):
             from grammared_language.clients.coedit_client import CoEditClient
             
-            triton_model_name = config.triton_model_name if config.backend == 'triton' else None
-            
-            input_fields = {
-                k: v for k, v in config.model_dump().items() 
-                if k not in ['type']
-            }
-            
-            return CoEditClient(**input_fields)
+            client_params = vars(config.serving_config)
+            client_params.update(vars(config.grammared_config) if config.grammared_config else {})
+                        
+            return CoEditClient(**client_params)
             
     except Exception as e:
-        print(f"Failed to create client for {model_name}: {e}")
+        logger.error(f"Failed to create client for {model_name}: {e}")
     
     return None
 
 
-def create_clients_from_config(config_path: str) -> List[BaseClient]:
+def create_clients_from_config(config_path: str=None, use_env: bool=True, backup_config_path: str="/default_model_config.yaml") -> List[BaseClient]:
     """
-    Initialize multiple clients from a configuration file.
+    Initialize multiple clients from a configuration file or environment variables.
     
     Args:
         config_path: Path to the configuration file
@@ -198,7 +297,15 @@ def create_clients_from_config(config_path: str) -> List[BaseClient]:
     Returns:
         List of initialized client instances
     """
-    models_config = load_config(config_path)
+    if config_path is not None:
+        logger.info(f"Loading model configuration from file: {config_path}")
+        models_config = load_config_from_file(config_path)
+    elif use_env:
+        logger.info(f"Loading model configuration from environment variables")
+        models_config = load_config_from_env()
+    else:
+        logger.info(f"No config path provided. Loading model configuration from backup file: {backup_config_path}")
+        models_config = load_config_from_file(backup_config_path)
     clients = []
     
     for model_name, model_config in models_config.models.items():
