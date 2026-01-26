@@ -49,7 +49,7 @@ def tokenizer():
 @pytest.fixture
 def model_name():
     """Return the model name to test."""
-    return "gector_bert"
+    return "gector_deberta_large"
 
 
 class TestTritonServerHealth:

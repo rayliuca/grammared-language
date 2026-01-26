@@ -2,7 +2,8 @@ version = 1
 revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
-    "python_full_version >= '3.12'",
+    "python_full_version >= '3.13'",
+    "python_full_version == '3.12.*'",
     "python_full_version < '3.12'",
 ]
 
@@ -1029,7 +1030,6 @@ all = [
     { name = "bitsandbytes" },
     { name = "black" },
     { name = "fastapi" },
-    { name = "gector" },
     { name = "grpcio" },
     { name = "grpcio-tools" },
     { name = "isort" },
@@ -1055,9 +1055,10 @@ all = [
 ]
 api = [
     { name = "fastapi" },
-    { name = "gector" },
-    { name = "numpy" },
+    { name = "grpcio" },
+    { name = "grpcio-tools" },
     { name = "openai" },
+    { name = "protobuf" },
     { name = "pydantic" },
     { name = "uvicorn" },
 ]
@@ -1071,13 +1072,6 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "ruff" },
-]
-grpc = [
-    { name = "grpcio" },
-    { name = "grpcio-tools" },
-    { name = "numpy" },
-    { name = "protobuf" },
-    { name = "pydantic" },
 ]
 test = [
     { name = "pytest" },
@@ -1107,16 +1101,13 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "fastapi", marker = "extra == 'api'" },
     { name = "gector", git = "https://github.com/rayliuca/gector" },
-    { name = "gector", marker = "extra == 'api'", git = "https://github.com/rayliuca/gector" },
-    { name = "grammared-language", extras = ["api", "triton", "grpc", "dev", "test"], marker = "extra == 'all'" },
-    { name = "grpcio", marker = "extra == 'grpc'" },
-    { name = "grpcio-tools", marker = "extra == 'grpc'" },
+    { name = "grammared-language", extras = ["api", "triton", "dev", "test"], marker = "extra == 'all'" },
+    { name = "grpcio", marker = "extra == 'api'" },
+    { name = "grpcio-tools", marker = "extra == 'api'" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.12.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "numpy" },
-    { name = "numpy", marker = "extra == 'api'" },
-    { name = "numpy", marker = "extra == 'grpc'" },
     { name = "numpy", marker = "extra == 'triton'" },
     { name = "onnx", marker = "extra == 'triton'" },
     { name = "onnxruntime", marker = "extra == 'triton'" },
@@ -1125,11 +1116,10 @@ requires-dist = [
     { name = "optimum", extras = ["onnxruntime"], marker = "extra == 'triton'" },
     { name = "pip", specifier = ">=25.3" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
-    { name = "protobuf", marker = "extra == 'grpc'" },
+    { name = "protobuf", marker = "extra == 'api'" },
     { name = "protobuf", marker = "extra == 'triton'" },
     { name = "pydantic" },
     { name = "pydantic", marker = "extra == 'api'" },
-    { name = "pydantic", marker = "extra == 'grpc'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
@@ -1146,7 +1136,7 @@ requires-dist = [
     { name = "tritonclient", extras = ["all"] },
     { name = "uvicorn", marker = "extra == 'api'" },
 ]
-provides-extras = ["api", "triton", "grpc", "dev", "test", "all"]
+provides-extras = ["api", "triton", "dev", "test", "all"]
 
 [[package]]
 name = "greenlet"

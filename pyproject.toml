@@ -11,7 +11,6 @@ authors = [ { name = "Ray Liu", email = "ray@rayliu.ca" } ]
 dependencies = [
   "numpy",
   "pydantic",
-  #  "gector @ git+https://github.com/rayliuca/gector.git"
   "openai",
   "jinja2>=3.1.6",
   "transformers[torch]>=4.0.0",
@@ -28,9 +27,11 @@ api = [
   "fastapi",
   "uvicorn",
   "pydantic",
-  "numpy",
   "openai",
-  "gector @ git+https://github.com/rayliuca/gector.git"
+  "grpcio",
+  "grpcio-tools",
+  "protobuf",
+  "pydantic",
 ]
 triton = [
   "transformers>=4.30.0",
@@ -42,13 +43,6 @@ triton = [
   "onnxruntime",
   "onnx",
   "bitsandbytes"
-]
-grpc = [
-  "grpcio",
-  "grpcio-tools",
-  "protobuf",
-  "pydantic",
-  "numpy"
 ]
 dev = [
   "pytest>=7.0.0",
@@ -68,7 +62,7 @@ test = [
   "requests>=2.28.0",
 ]
 all = [
-  "grammared-language[api,triton,grpc,dev,test]"
+  "grammared-language[api,triton,dev,test]"
 ]
 
 [build-system]

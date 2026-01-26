@@ -24,3 +24,13 @@ coedit_large:
         temperature: 0.8
     grammared_config:
         prompt_template: "Fix grammatical errors: {{ text }}"
+
+grammared_classifier:
+    type: grammared_classifier
+    backend: triton
+    serving_config:
+        pretrained_model_name_or_path: "rayliuca/grammared-classifier-deberta-v3-small"
+        triton_model_name: grammared_classifier
+        triton_hostname: localhost
+        triton_port: 8001
+

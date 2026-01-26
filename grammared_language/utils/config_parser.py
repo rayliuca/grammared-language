@@ -115,22 +115,23 @@ MODEL_CONFIG_REGISTRY = {
     'openai': OpenAIConfig,
 }
 
+def get_model_config(model_name, model_config_dict: Dict[str, Any]) -> BaseModelConfig:
+    model_type = model_config_dict.get('type')
+    if model_type not in MODEL_CONFIG_REGISTRY:
+        raise ValueError(f"Unknown model type for {model_name}: {model_type}")
+    return MODEL_CONFIG_REGISTRY[model_type](**model_config_dict)
 
 class ModelsConfig(BaseModel):
     """Container for multiple model configurations."""
     
-    models: Dict[str, Union[GectorConfig, GrammaredClassifierConfig, CoEditConfig]]
+    models: Dict[str, Union[GectorConfig, GrammaredClassifierConfig, CoEditConfig, BaseModelConfig]]
     
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'ModelsConfig':
         """Create ModelsConfig from a dictionary."""
         models = {}
         for model_name, model_config in config_dict.items():
-            if isinstance(model_config, dict):
-                model_type = model_config.get('type')
-                if model_type not in MODEL_CONFIG_REGISTRY:
-                    raise ValueError(f"Unknown model type for {model_name}: {model_type}")
-                models[model_name] = MODEL_CONFIG_REGISTRY[model_type](**model_config)
+            models[model_name] = get_model_config(model_name, model_config)
         return cls(models=models)
 
 
@@ -278,7 +279,7 @@ def create_client_from_config(
             
             client_params = vars(config.serving_config)
             client_params.update(vars(config.grammared_config) if config.grammared_config else {})
-                        
+
             return CoEditClient(**client_params)
             
     except Exception as e:

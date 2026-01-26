@@ -33,28 +33,27 @@ import numpy as np
 import torch
 import transformers
 import triton_python_backend_utils as pb_utils
+from grammared_language.utils.config_parser import get_model_config, BaseModelConfig
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)  # Set default level to WARNING
-
+logging.basicConfig(level=logging.DEBUG) 
 
 
 DEFAULT_MODEL_BACKEND = "transformers"
-def load_pipeline_from_config(model_config, task="text2text-generation", backend:str="transformers", fallback:bool=True, **kwargs):
+def load_pipeline_from_config(model_config:BaseModelConfig, task="text2text-generation", backend:str="transformers", fallback:bool=True, **kwargs):
     """Load a HuggingFace model based on the provided configuration.
 
     Args:
-        model_config (dict): Model configuration dictionary.
+        model_config (BaseModelConfig): Model configuration
 
     Returns:
         model: Loaded HuggingFace model.
     """
     # Extract model parameters from configuration
-    model_params = model_config.get("parameters", {})
     default_hf_model = "HuggingFaceTB/SmolLM2-135M"
-    if 'pretrained_model_name_or_path' in model_config['parameters']:
-        hf_model = model_config['parameters']['pretrained_model_name_or_path']['string_value']
+    if model_config.serving_config.pretrained_model_name_or_path:
+        hf_model = model_config.serving_config.pretrained_model_name_or_path
     else:
         hf_model = default_hf_model
     logger.warning(f"Loading model: {hf_model} with backend: {backend}")
@@ -81,32 +80,30 @@ class TritonTransformersPythonModel:
         self.logger = pb_utils.Logger
         self.model_config = json.loads(args["model_config"])
         self.model_params = self.model_config.get("parameters", {})
-        self.grammared_language_model_config = json.loads(self.model_config.get('grammared_language_model_config', "{}"))
-        default_max_gen_length = "15"
+        self.grammared_language_model_config = json.loads(
+            self.model_config.get('parameters', {}).get('grammared_language_model_config', {}).get('string_value', "{}")
+        )
+        self.grammared_language_model_config = get_model_config(self.model_config.get("name", "transfomers_model"), self.grammared_language_model_config)
+
+        default_max_gen_length = "30"
+        self.max_output_length = self.grammared_language_model_config.model_inference_config.max_length or int(default_max_gen_length)
         # Check for user-specified model name in model config parameters
         hf_model = self.model_params.get("pretrained_model_name_or_path", {}).get(
             "string_value", self.DEFAULT_HF_MODEL
         )
-        # Check for user-specified max length in model config parameters
-        self.max_output_length = int(
-            self.model_params.get("max_output_length", {}).get(
-                "string_value", default_max_gen_length
-            )
-        )
 
-        self.logger.log_info(f"Max output length: {self.max_output_length}")
-        self.logger.log_info(f"Loading HuggingFace model: {hf_model}...")
+        logger.warning(f"Loading HuggingFace model: {hf_model}...")
+        logger.warning(f"Loading grammared_language_model_config: {self.grammared_language_model_config}...")
 
         # Get model instance device configuration
         model_device_type = args['model_instance_kind']
         model_instance_device_id = args['model_instance_device_id']
-        print("Model instance kind:", model_device_type)
-        print("Model instance device id:", model_instance_device_id)
-        # Determine device
-        if model_device_type == 'CPU':
+        if self.grammared_language_model_config.serving_config.device == 'cpu':
             self.device = 'cpu'
-        else:
+        elif self.grammared_language_model_config.serving_config.device == 'cuda':
             self.device = f'cuda:{model_instance_device_id}'
+        else:
+            self.device = 'auto'
 
         # # Assume tokenizer available for same model
         # self.tokenizer = transformers.AutoTokenizer.from_pretrained(hf_model)
@@ -119,9 +116,9 @@ class TritonTransformersPythonModel:
         # )
 
         self.pipeline = load_pipeline_from_config(
-            self.model_config,
+            self.grammared_language_model_config,
             task=self.PIPELINE_TASK,
-            backend=self.model_params.get("model_backend", {}).get("string_value", DEFAULT_MODEL_BACKEND),
+            backend=self.grammared_language_model_config.serving_config.backend or DEFAULT_MODEL_BACKEND,
             fallback=True,
             device=self.device,
         )
@@ -129,31 +126,38 @@ class TritonTransformersPythonModel:
     def execute(self, requests):
         responses = []
         for request in requests:
-            # Assume input named "prompt", specified in autocomplete above
+            # Get input tensor with shape [batch_size, 1]
             input_tensor = pb_utils.get_input_tensor_by_name(request, "text_input")
-            prompt = input_tensor.as_numpy()[0].decode("utf-8")
-
-            self.logger.log_info(f"Generating sequences for text_input: {prompt}")
-            response = self.generate(prompt)
+            input_data = input_tensor.as_numpy()
+            
+            # Process all items in the batch
+            prompts = []
+            for i in range(len(input_data)):
+                prompt = input_data[i][0].decode("utf-8")
+                prompts.append(prompt)
+                logger.warning(f"Batch item {i}: {prompt}")
+            
+            response = self.generate_batch(prompts)
             responses.append(response)
 
         return responses
 
-    def generate(self, prompt):
-        sequences = self.pipeline(
-            prompt,
-            max_length=self.max_output_length,
-        )
+    def generate_batch(self, prompts):
+        """Generate text for a batch of prompts."""
+        all_texts = []
+        for prompt in prompts:
+            sequences = self.pipeline(
+                prompt,
+                max_length=self.max_output_length,
+            )
+            # Extract generated text from the first sequence
+            text = sequences[0]["generated_text"]
+            logger.warning(f"Generated: {text}")
+            all_texts.append(text)
 
-        output_tensors = []
-        texts = []
-        for i, seq in enumerate(sequences):
-            text = seq["generated_text"]
-            self.logger.log_info(f"Sequence {i+1}: {text}")
-            texts.append(text)
-
-        tensor = pb_utils.Tensor("text_output", np.array(texts, dtype=np.object_))
-        output_tensors.append(tensor)
+        # Return batch output with shape [batch_size, -1]
+        tensor = pb_utils.Tensor("text_output", np.array(all_texts, dtype=np.object_).reshape(-1, 1))
+        output_tensors = [tensor]
         response = pb_utils.InferenceResponse(output_tensors=output_tensors)
         return response
 

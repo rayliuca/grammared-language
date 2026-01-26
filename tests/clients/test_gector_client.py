@@ -25,6 +25,8 @@ except (ImportError, AttributeError):
 # Determine if non-hermetic tests should run
 RUN_NON_HERMETIC = os.getenv("RUN_NON_HERMETIC", "false").lower() in ("true", "1", "yes")
 
+MODEL_NAME = "gector_deberta_large"
+MODEL_ID = 'gotutiyan/gector-deberta-large-5k'
 
 # Unit tests (hermetic - no external dependencies)
 class TestGectorClientUnit:
@@ -96,12 +98,12 @@ class TestGectorClientUnit:
         # Create client with triton model name
         client = GectorClient(
             pretrained_model_name_or_path="test-model",
-            triton_model_name="gector_bert",
+            triton_model_name=MODEL_NAME,
             verb_dict_path="test-vocab.txt"
         )
         
         # Verify Triton model was used
-        mock_gector_triton.from_pretrained.assert_called_once_with("test-model", model_name="gector_bert")
+        mock_gector_triton.from_pretrained.assert_called_once_with("test-model", model_name=MODEL_NAME)
         assert client.model is not None
     
     @pytest.mark.unit
@@ -190,7 +192,7 @@ class TestGectorClientNonHermetic:
     @pytest.fixture(scope="class")
     def model_id(self):
         """Return the model ID to use for testing."""
-        return "gotutiyan/gector-bert-base-cased-5k"
+        return MODEL_ID
     
     @pytest.fixture(scope="class")
     def verb_dict_path(self):
@@ -227,7 +229,7 @@ class TestGectorClientNonHermetic:
             client = GectorClient(
                 pretrained_model_name_or_path=model_id,
                 verb_dict_path=verb_dict_path,
-                triton_model_name="gector_bert"
+                triton_model_name=MODEL_NAME
             )
             return client
         except ImportError as e:

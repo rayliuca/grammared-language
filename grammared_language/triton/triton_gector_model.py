@@ -11,6 +11,7 @@ import triton_python_backend_utils as pb_utils
 from transformers import AutoModel
 import torch
 from gector import GECToR
+from grammared_language.utils.config_parser import get_model_config
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)  # Set default level to WARNING
@@ -27,18 +28,27 @@ class TritonGectorPythonModel:
             args: Dictionary containing model configuration
         """
         self.model_config = json.loads(args['model_config'])
-        self.grammared_language_model_config = json.loads(self.model_config.get('grammared_language_model_config', "{}"))
+        self.grammared_language_model_config = json.loads(
+            self.model_config.get('parameters', {}).get('grammared_language_model_config', {}).get('string_value', "{}")
+        )
+        self.grammared_language_model_config = get_model_config(self.model_config.get("name", "gector_model"), self.grammared_language_model_config)
         logger.warning(f"Loaded model config: {self.model_config}")
+        logger.warning(f"Loading grammared_language_model_config: {self.grammared_language_model_config}...")
         # Get model instance device configuration
 
         model_device_type = args['model_instance_kind']
         model_instance_device_id = args['model_instance_device_id']
 
-        # Determine device
-        if model_device_type == 'CPU':
+        if self.grammared_language_model_config.serving_config.device == 'cpu':
             self.device = 'cpu'
-        else:
+        elif self.grammared_language_model_config.serving_config.device == 'cuda':
             self.device = f'cuda:{model_instance_device_id}'
+        else:
+            # mimic 'auto' behavior
+            if torch.cuda.is_available():
+                self.device = f'cuda:{model_instance_device_id}'
+            else:
+                self.device = 'cpu'
 
         # Initialize attributes for cleanup
         self.model = None

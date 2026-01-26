@@ -91,9 +91,9 @@ class TestText2TextBaseClient:
         mock_grpcclient.InferInput = Mock()
         mock_grpcclient.InferRequestedOutput = Mock()
         
-        # Mock response
+        # Mock response with batched output shape [1, 1]
         mock_response = Mock()
-        mock_response.as_numpy.return_value = np.array([b"This is a test."], dtype=object)
+        mock_response.as_numpy.return_value = np.array([[b"This is a test."]], dtype=object)
         mock_client.infer.return_value = mock_response
         
         client = Text2TextBaseClient(model_name="coedit_large")
@@ -111,9 +111,9 @@ class TestText2TextBaseClient:
         mock_grpcclient.InferInput = Mock()
         mock_grpcclient.InferRequestedOutput = Mock()
         
-        # Mock response with string
+        # Mock response with string in batched shape [1, 1]
         mock_response = Mock()
-        mock_response.as_numpy.return_value = np.array(["This is a test."], dtype=object)
+        mock_response.as_numpy.return_value = np.array([["This is a test."]], dtype=object)
         mock_client.infer.return_value = mock_response
         
         client = Text2TextBaseClient(model_name="coedit_large")
@@ -151,9 +151,9 @@ class TestText2TextBaseClient:
         mock_grpcclient.InferInput = Mock()
         mock_grpcclient.InferRequestedOutput = Mock()
         
-        # Mock response
+        # Mock response with batched output shape [1, 1]
         mock_response = Mock()
-        mock_response.as_numpy.return_value = np.array([b"This is a test."], dtype=object)
+        mock_response.as_numpy.return_value = np.array([[b"This is a test."]], dtype=object)
         mock_client.infer.return_value = mock_response
         
         client = Text2TextBaseClient(model_name="coedit_large")
@@ -174,9 +174,9 @@ class TestText2TextBaseClient:
         mock_grpcclient.InferInput = Mock()
         mock_grpcclient.InferRequestedOutput = Mock()
         
-        # Mock response
+        # Mock response with batched output shape [1, 1]
         mock_response = Mock()
-        mock_response.as_numpy.return_value = np.array([b"This is a test."], dtype=object)
+        mock_response.as_numpy.return_value = np.array([[b"This is a test."]], dtype=object)
         mock_client.infer.return_value = mock_response
         
         client = Text2TextBaseClient(model_name="coedit_large")

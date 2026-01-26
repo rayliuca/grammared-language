@@ -10,6 +10,7 @@ import numpy as np
 import triton_python_backend_utils as pb_utils
 import torch
 from grammared_language.grammared_classifier.classifier_pipeline import CalibratedTextClassificationPipeline
+from grammared_language.utils.config_parser import get_model_config
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -30,8 +31,12 @@ class TritonGrammaredClassifierPythonModel:
         self.model_config = json.loads(args['model_config'])
         logger.info(f"Loaded model config: {self.model_config}")
 
-        self.grammared_language_model_config = json.loads(self.model_config.get('grammared_language_model_config', "{}"))
+        self.grammared_language_model_config = json.loads(
+            self.model_config.get('parameters', {}).get('grammared_language_model_config', {}).get('string_value', "{}")
+        )
+        self.grammared_language_model_config = get_model_config(self.model_config.get("name", "grammared_classifier_model"), self.grammared_language_model_config)
 
+        logger.warning(f"Loading grammared_language_model_config: {self.grammared_language_model_config}...")
         # Get model instance device configuration
         model_device_type = args['model_instance_kind']
         model_instance_device_id = args['model_instance_device_id']
@@ -39,10 +44,12 @@ class TritonGrammaredClassifierPythonModel:
         print("Model instance kind:", model_device_type)
         print("Model instance device id:", model_instance_device_id)
         # Determine device
-        if model_device_type == 'CPU':
+        if self.grammared_language_model_config.serving_config.device == 'cpu':
             self.device = 'cpu'
-        else:
+        elif self.grammared_language_model_config.serving_config.device == 'cuda':
             self.device = f'cuda:{model_instance_device_id}'
+        else:
+            self.device = 'auto'
 
         # Initialize attributes for cleanup
         self.pipeline = None
@@ -61,6 +68,7 @@ class TritonGrammaredClassifierPythonModel:
             logger.info(f"Loading model: {model_name}")
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForSequenceClassification.from_pretrained(model_name, device_map=self.device,)
+            self.device = self.model.device
 
             # # Move model to device
             # self.model.to(self.device)

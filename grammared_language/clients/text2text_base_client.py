@@ -109,8 +109,9 @@ class Text2TextBaseClient(BaseClient):
         Returns:
             Generated/corrected text from the model
         """
-        # Prepare input as numpy array with shape [1]
-        text_np = np.array([text], dtype=object)
+        # Prepare input as numpy array with shape [1, 1] for batching
+        # First dimension is batch size, second is the string dimension
+        text_np = np.array([[text]], dtype=object)
         
         # Create Triton input/output tensors based on protocol
         if self.triton_protocol == "grpc":
@@ -149,7 +150,8 @@ class Text2TextBaseClient(BaseClient):
         if len(output_data) == 0:
             return text  # Return original if no output
         
-        result = output_data[0]
+        # Extract from batch: output_data has shape [batch_size, 1]
+        result = output_data[0][0]
         if isinstance(result, bytes):
             return result.decode("utf-8")
         elif isinstance(result, np.ndarray):
