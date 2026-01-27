@@ -64,6 +64,9 @@ ENV PYTHONPATH="$TRITON_VENV/site-packages:$PYTHONPATH"
 # Change working directory to root to avoid import conflicts with /grammared_language
 WORKDIR /
 
+COPY docker/triton/default_model_config.yaml /default_model_config.yaml
+COPY docker/triton/build_repo.py /build_repo.py
+
 # Expose ports
 # 8000: HTTP
 # 8001: gRPC
@@ -74,5 +77,5 @@ EXPOSE 8000 8001 8002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/v2/health/ready || exit 1
 
-# Default command to start Triton server
-CMD ["tritonserver", "--model-repository=/models", "--log-verbose=1"]
+# Default command to build model repository then start Triton server
+CMD ["/bin/bash", "-c", "$TRITON_VENV/bin/python /build_repo.py && tritonserver --model-repository=/models --log-verbose=1"]

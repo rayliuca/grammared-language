@@ -4,12 +4,22 @@ import importlib
 import pkgutil
 from pathlib import Path
 
+try:
+    import triton_python_backend_utils as pb_utils
+    is_triton_server = True
+except ImportError:
+    is_triton_server = False
+
+
 # Programmatically discover and import all modules
 __all__ = []
 _module_path = Path(__file__).parent
 
 for _, module_name, _ in pkgutil.iter_modules([str(_module_path)]):
     if not module_name.startswith('_'):
+        if module_name.startswith('triton_') and not is_triton_server:
+            # skips Triton-specific models when not in Triton server environment
+            continue
         module = importlib.import_module(f'.{module_name}', package=__name__)
         # Export all public attributes from the module
         for attr_name in dir(module):

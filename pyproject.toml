@@ -73,6 +73,11 @@ build-backend = "setuptools.build_meta"
 where = ["."]
 include = ["grammared_language*"]
 
+[tool.setuptools.package-data]
+grammared_language = [
+  "triton/builder/triton_templates/*.jinja",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

@@ -227,3 +227,7 @@ __marimo__/
 data/verb-form-vocab.txt
 /hf_token
 /triton_server/archived_model_repo/
+model_repository/coedit_large/config.pbtxt
+model_repository/coedit_large/1/model.py
+model_repository/gector_deberta_large/config.pbtxt
+model_repository/gector_deberta_large/1/model.py

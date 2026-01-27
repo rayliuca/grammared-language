@@ -20,12 +20,11 @@ services:
       - "8001:8001"  # gRPC
       - "8002:8002"  # Metrics
     volumes:
-      - ./triton_server/model_repository:/models:ro
       - ./config/triton:/config:ro
       - triton-cache:/cache  # HuggingFace model cache
       - ./hf_token:/cache/token  # HuggingFace token for private models
       - ./model_config.yaml:/model_config.yaml:ro  # Model configuration
-      - ./triton_server/example_model_repository:/models:ro  # Example models
+      # - ./triton_server/example_model_repository:/models:ro  # Example models
     # shm_size: '1gb'
     deploy:
       resources:
