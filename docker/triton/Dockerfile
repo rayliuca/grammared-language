@@ -2,7 +2,7 @@
 # This is a placeholder/template for the Triton server Docker image
 
 # Use NVIDIA Triton Inference Server as base image
-FROM nvcr.io/nvidia/tritonserver:25.12-vllm-python-py3
+FROM nvcr.io/nvidia/tritonserver:25.07-vllm-python-py3
 
 # Set pip cache directory (host should mount ./pip_cache to /pip_cache)
 ENV PIP_CACHE_DIR=/pip_cache

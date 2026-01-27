@@ -39,7 +39,7 @@ triton = [
   "sentencepiece",
   "protobuf",
   "numpy",
-  "optimum[onnxruntime]",
+  "optimum[onnxruntime-gpu]",
   "onnxruntime",
   "onnx",
   "bitsandbytes"

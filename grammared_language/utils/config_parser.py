@@ -28,6 +28,12 @@ class ServingConfig(BaseModel):
     device: Optional[str] = None
     
 
+class ModelInitConfig(BaseModel):
+    """Configuration for model inference settings."""
+    
+    model_config = ConfigDict(extra='allow')
+    
+
 
 class ModelInferenceConfig(BaseModel):
     """Configuration for model inference settings."""
@@ -62,9 +68,9 @@ class BaseModelConfig(BaseModel):
     
     # Nested config format
     serving_config: ServingConfig
-    model_config_dict: Optional[Dict[str, Any]] = Field(default=None, alias='model_config')
-    model_inference_config: Optional[ModelInferenceConfig] = None
-    grammared_config: Optional[GrammaredConfig] = None
+    model_init_config: Optional[ModelInitConfig] = Field(default=ModelInitConfig(), alias='model_config')
+    model_inference_config: Optional[ModelInferenceConfig] = ModelInferenceConfig()
+    grammared_config: Optional[GrammaredConfig] = GrammaredConfig()
 
 class GectorConfig(BaseModelConfig):
     """Configuration for GECToR models."""

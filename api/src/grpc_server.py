@@ -57,28 +57,29 @@ correction_multi_client = AsyncMultiClient(
 # # Initialize ERRANT Grammar Correction Extractor
 # errant_extractor = ErrantGrammarCorrectionExtractor(language='en', min_length=1)
 
-analyze_cache_store = SimpleCacheStore()
-process_cache_store = SimpleCacheStore()
-
+analyze_cache_store = SimpleCacheStore(1)
+process_cache_store = SimpleCacheStore(1)
+match_cache_store = SimpleCacheStore(1)
+match_anylized_cache_store = SimpleCacheStore(1)
 
 def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
     """Convert Pydantic Match model to ml_server Match."""
     grpc_match = ml_server_pb2.Match(
         offset=match.offset + offset_adjustment,
         length=match.length,
-        id="grammared_language",
-        sub_id="",
+        id=match.id or "GrammaredLanguage",
+        sub_id=match.sub_id or "",
         suggestions=match.suggestions or [],
         ruleDescription=match.rule.description if match.rule else None,
         matchDescription=match.message or "",
         matchShortDescription=match.shortMessage or match.message or "",
-        url="",
+        url=match.url or "",
         suggestedReplacements=[
             ml_server_pb2.SuggestedReplacement(
                 replacement=r.replacement,
-                description="",
-                suffix="",
-                confidence=0.8
+                description=r.description or "",
+                suffix=r.suffix or "",
+                confidence=r.confidence if r.confidence is not None else -1,
             )
             for r in (match.suggested_replacements or [])
         ],
@@ -86,7 +87,7 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
         type=ml_server_pb2.Match.MatchType.UnknownWord,  # Grammar errors are "Other" type
         contextForSureMatch=0,
         rule=ml_server_pb2.Rule(
-            sourceFile="grammared_language",
+            sourceFile=match.rule.id or "grammared_language",
             issueType=match.rule.issueType or "style",
             tempOff=False,
             category=ml_server_pb2.RuleCategory(
@@ -229,14 +230,27 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
         try:
             logger.info(f"Match request: {len(request.sentences)} sentences")
             
+            results = {i:None for i in range(len(request.sentences))}
+            match_tasks = [] # (idx, text)
+            for i, analyzed_sentence in enumerate(request.sentences):
+                if match_anylized_cache_store.contains(analyzed_sentence):
+                    results[i] = match_anylized_cache_store.get(analyzed_sentence)
+                else:
+                    match_tasks.append((i, analyzed_sentence))
+
+            task_results = correction_multi_client.predict_with_merge([s for _, s in match_tasks])
+            for (idx, _), result in zip(match_tasks, task_results):
+                results[idx] = result
+                match_anylized_cache_store.add(request.sentences[idx], result)
+            
             sentence_matches = []
-            for sentence in request.sentences:
-                enriched_result = correction_multi_client.predict_with_merge(sentence)
+            for i in range(len(request.sentences)):
+                enriched_result = results[i]
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
                 sentence_matches.append(matches)
-            
+            print("Batch successfully processed Match request.")            
             return ml_server_pb2.MatchResponse(sentenceMatches=sentence_matches)
             
         except Exception as e:
@@ -259,14 +273,27 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
         try:
             logger.info(f"MatchAnalyzed request: {len(request.sentences)} analyzed sentences")
             
+            results = {i:None for i in range(len(request.sentences))}
+            match_tasks = [] # (idx, text)
+            for i, analyzed_sentence in enumerate(request.sentences):
+                if match_anylized_cache_store.contains(analyzed_sentence):
+                    results[i] = match_anylized_cache_store.get(analyzed_sentence)
+                else:
+                    match_tasks.append((i, analyzed_sentence))
+
+            task_results = correction_multi_client.predict_with_merge([s for _, s in match_tasks])
+            for (idx, _), result in zip(match_tasks, task_results):
+                results[idx] = result
+                match_anylized_cache_store.add(request.sentences[idx], result)
+            
             sentence_matches = []
-            for analyzed_sentence in request.sentences:
-                enriched_result = correction_multi_client.predict_with_merge(analyzed_sentence.text)
+            for i in range(len(request.sentences)):
+                enriched_result = results[i]
                 matches = ml_server_pb2.MatchList(
                     matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
                 sentence_matches.append(matches)
-            
+            print("Batch successfully processed MatchAnalyzed request.")
             return ml_server_pb2.MatchResponse(sentenceMatches=sentence_matches)
             
         except Exception as e:

@@ -50,3 +50,9 @@ parameters: {
   key: "EXECUTION_ENV_PATH",
   value: {string_value: "/opt/tritonserver/python_backend_env"}
 }
+
+# Dynamic batching for better throughput
+dynamic_batching {
+  preferred_batch_size: [1, 2, 4, 8]
+  max_queue_delay_microseconds: 750
+}

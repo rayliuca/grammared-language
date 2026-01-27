@@ -41,7 +41,7 @@ ERROR_TYPE_LABELS = {
 class ErrantGrammarCorrectionExtractor:
     """Extract replacement operations from original to corrected text using ERRANT."""
 
-    def __init__(self, language: str = 'en', min_length: int = 1):
+    def __init__(self, language: str = 'en', min_length: int = 1, rule_id:str="grammared_language") -> None:
         """
         Initialize the extractor with ERRANT annotator.
 
@@ -51,6 +51,7 @@ class ErrantGrammarCorrectionExtractor:
         """
         self.annotator = errant.load(language)
         self.min_length = max(1, min_length)
+        self.rule_id = rule_id
 
     def extract_replacements(self, original: str, corrected: str, fix_tokenization=True) -> List[Match]:
         """
@@ -127,7 +128,7 @@ class ErrantGrammarCorrectionExtractor:
                         offset=offset,
                         length=length,
                         type=MatchType.Other,  # Grammar errors typically map to "Other". Tho this has no effect in LT.
-                        id=error_type
+                        id=self.rule_id
                     )
                 )
         

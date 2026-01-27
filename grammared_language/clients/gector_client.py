@@ -27,6 +27,8 @@ except ImportError:
 
 class GectorClient(BaseClient):
     def __init__(self, pretrained_model_name_or_path: str, triton_model_name: str=None, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
+        if "rule_id" not in kwargs:
+            kwargs["rule_id"] = triton_model_name or pretrained_model_name_or_path or "Gector"
         super().__init__(**kwargs)
         
         if not GECTOR_AVAILABLE:
@@ -52,7 +54,18 @@ class GectorClient(BaseClient):
             'batch_size': kwargs.get('batch_size', 2),
         }
 
-    def _predict(self, text: str, **kwargs) -> str:
+    def _predict(self, text: str|list[str], **kwargs) -> str|list[str]:
+        if isinstance(text, list):
+            corrected = predict(
+                self.model, self.tokenizer, text,
+                self.encode, self.decode,
+                keep_confidence=kwargs.get('keep_confidence', self.pred_config['keep_confidence']),
+                min_error_prob=kwargs.get('min_error_prob', self.pred_config['min_error_prob']),
+                n_iteration=kwargs.get('n_iteration', self.pred_config['n_iteration']),
+                batch_size=kwargs.get('batch_size', self.pred_config['batch_size']),
+            )
+            return corrected
+        
         corrected = predict(
             self.model, self.tokenizer, [text],
             self.encode, self.decode,

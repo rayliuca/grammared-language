@@ -57,17 +57,41 @@ def load_pipeline_from_config(model_config:BaseModelConfig, task="text2text-gene
     else:
         hf_model = default_hf_model
     logger.warning(f"Loading model: {hf_model} with backend: {backend}")
-
     try:
         if backend == "ort":
             from optimum import onnxruntime
-            pipeline = onnxruntime.pipeline(task=task, model=hf_model, **kwargs)
+            # pipeline = onnxruntime.pipeline(task=task, model=hf_model, **kwargs)
+            tokenizer = transformers.AutoTokenizer.from_pretrained(hf_model, truncation=True)
+            ORTModelClass = onnxruntime.pipelines.ORT_TASKS_MAPPING[task][0]
+            provider = "CPUExecutionProvider"
+            if 'cuda' in kwargs['device'].lower():
+                provider = 'CUDAExecutionProvider'
+            model = ORTModelClass.from_pretrained(
+                hf_model,
+                provider=provider
+            )
+            logger.warning(f"model_config.model_config: {model_config.model_config}")
+            logger.warning(f"kwargs: {kwargs}")
+            pipeline = transformers.pipeline(
+                task, 
+                model=model, 
+                tokenizer=tokenizer,
+                **model_config.model_init_config.model_dump(),
+                **kwargs)
         else:
-            pipeline = transformers.pipeline(task=task, model=hf_model, **kwargs)
+            pipeline = transformers.pipeline(
+                task=task, model=hf_model, 
+                **model_config.model_init_config.model_dump(),
+                **kwargs
+            )
     except Exception as e:
         if fallback and backend != DEFAULT_MODEL_BACKEND:
             logger.warning(f"Failed to load model {hf_model}: {str(e)} using backend: {backend}. Falling back to default model backend {DEFAULT_MODEL_BACKEND}.")
-            pipeline = transformers.pipeline(task=task, model=hf_model, **kwargs)
+            pipeline = transformers.pipeline(
+                task=task, model=hf_model, 
+                **model_config.model_init_config.model_dump(),
+                **kwargs
+            )
         else:
             raise RuntimeError(f"Failed to load model {hf_model}: {str(e)}")
     return pipeline
@@ -103,7 +127,11 @@ class TritonTransformersPythonModel:
         elif self.grammared_language_model_config.serving_config.device == 'cuda':
             self.device = f'cuda:{model_instance_device_id}'
         else:
-            self.device = 'auto'
+            # mimic 'auto' behavior
+            if torch.cuda.is_available():
+                self.device = f'cuda:{model_instance_device_id}'
+            else:
+                self.device = 'cpu'
 
         # # Assume tokenizer available for same model
         # self.tokenizer = transformers.AutoTokenizer.from_pretrained(hf_model)
@@ -144,17 +172,12 @@ class TritonTransformersPythonModel:
 
     def generate_batch(self, prompts):
         """Generate text for a batch of prompts."""
-        all_texts = []
-        for prompt in prompts:
-            sequences = self.pipeline(
-                prompt,
-                max_length=self.max_output_length,
-            )
-            # Extract generated text from the first sequence
-            text = sequences[0]["generated_text"]
-            logger.warning(f"Generated: {text}")
-            all_texts.append(text)
-
+        sequences = self.pipeline(
+            prompts,
+            max_length=self.max_output_length,
+        )
+        all_texts = [seq["generated_text"] for seq in sequences]
+        logger.warning(f"Generated: {all_texts}")
         # Return batch output with shape [batch_size, -1]
         tensor = pb_utils.Tensor("text_output", np.array(all_texts, dtype=np.object_).reshape(-1, 1))
         output_tensors = [tensor]

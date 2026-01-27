@@ -60,6 +60,8 @@ class Text2TextBaseClient(BaseClient):
         prompt_template: Optional[str] = None,
         **kwargs
     ):
+        if "rule_id" not in kwargs:
+            kwargs["rule_id"] = model_name
         super().__init__(**kwargs)
         
         if not _TRITON_AVAILABLE:
@@ -99,7 +101,7 @@ class Text2TextBaseClient(BaseClient):
             return self._template.render(text=text)
         return text
     
-    def _predict(self, text: str) -> str:
+    def _predict(self, text: str|list[str]) -> str|list[str]:
         """
         Send text to Triton model and get generated output.
         
@@ -111,7 +113,12 @@ class Text2TextBaseClient(BaseClient):
         """
         # Prepare input as numpy array with shape [1, 1] for batching
         # First dimension is batch size, second is the string dimension
-        text_np = np.array([[text]], dtype=object)
+        single = True
+        if isinstance(text, list):
+            text_np = np.array([text], dtype=object)
+            single = False
+        else:
+            text_np = np.array([[text]], dtype=object)
         
         # Create Triton input/output tensors based on protocol
         if self.triton_protocol == "grpc":
@@ -151,12 +158,16 @@ class Text2TextBaseClient(BaseClient):
             return text  # Return original if no output
         
         # Extract from batch: output_data has shape [batch_size, 1]
-        result = output_data[0][0]
-        if isinstance(result, bytes):
-            return result.decode("utf-8")
-        elif isinstance(result, np.ndarray):
-            if result.dtype.type is np.bytes_:
-                return result.tobytes().decode("utf-8")
-            return str(result)
-        else:
-            return str(result)
+        def decode_result(result):
+            if isinstance(result, bytes):
+                return result.decode("utf-8")
+            elif isinstance(result, np.ndarray):
+                if result.dtype.type is np.bytes_:
+                    return result.tobytes().decode("utf-8")
+                return str(result)
+            else:
+                return str(result)
+        results = [decode_result(output_data[i][0]) for i in range(len(output_data))]
+        if single:
+            return results[0]
+        return results
