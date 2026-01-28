@@ -2,7 +2,7 @@ gector_deberta_large:
     type: gector
     backend: triton
     serving_config:
-        triton_hostname: localhost
+        triton_host: triton-server
         triton_port: 8001
         pretrained_model_name_or_path: "gotutiyan/gector-deberta-large-5k"
         triton_model_name: gector_deberta_large
@@ -12,7 +12,7 @@ coedit_large:
     type: coedit
     backend: triton
     serving_config:
-        triton_hostname: localhost
+        triton_host: triton-server
         triton_port: 8001
         # pretrained_model_name_or_path: "rayliuca/coedit-large-onnx"
         pretrained_model_name_or_path: "rayliuca/coedit-large-onnx-quantized" # cpu only!

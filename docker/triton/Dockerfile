@@ -64,7 +64,7 @@ ENV PYTHONPATH="$TRITON_VENV/site-packages:$PYTHONPATH"
 # Change working directory to root to avoid import conflicts with /grammared_language
 WORKDIR /
 
-COPY docker/triton/default_model_config.yaml /default_model_config.yaml
+COPY docker/default_model_config.yaml /default_model_config.yaml
 COPY docker/triton/build_repo.py /build_repo.py
 
 # Expose ports

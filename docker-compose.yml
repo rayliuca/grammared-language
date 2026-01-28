@@ -76,7 +76,35 @@ services:
     networks:
       - grammared-network
     restart: unless-stopped
-
+  languagetool:
+    image: meyay/languagetool:latest
+    container_name: languagetool
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:exec
+    cap_drop:
+      - ALL
+    cap_add:
+      - CAP_CHOWN
+      - CAP_DAC_OVERRIDE
+      - CAP_SETUID
+      - CAP_SETGID
+    security_opt:
+      - no-new-privileges
+    ports:
+      - 8081:8081
+    environment:
+      download_ngrams_for_langs: en
+      MAP_UID: 1000
+      MAP_GID: 1000
+      langtool_remoteRulesFile: /remote-rule-config.json      
+    volumes:
+      - ./ngrams:/ngrams
+      - ./fasttext:/fasttext
+      - ./example_language_tool_configs/remote-rule-config.json:/remote-rule-config.json:ro
+    networks:
+      - grammared-network
 networks:
   grammared-network:
     # driver: bridge

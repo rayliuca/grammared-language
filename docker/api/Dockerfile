@@ -51,7 +51,7 @@ RUN $API_VENV/bin/python -m spacy download en_core_web_sm
 # Change working directory to root to avoid import conflicts with /grammared_language
 WORKDIR /
 
-COPY docker/api/default_model_config.yaml /default_model_config.yaml
+COPY docker/default_model_config.yaml /default_model_config.yaml
 # Copy application code
 COPY api/src/ src/
 

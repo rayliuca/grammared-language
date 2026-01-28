@@ -1,5 +1,7 @@
+import os
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 from grammared_language.utils.errant_grammar_correction_extractor import ErrantGrammarCorrectionExtractor
+from functools import lru_cache
 
 class BaseClient:
     def __init__(self, *args, **kwargs):
@@ -26,6 +28,7 @@ class BaseClient:
     def _output_postprocess(self, original: str, pred: LanguageToolRemoteResult, **kwargs) -> LanguageToolRemoteResult:
         return pred
 
+    @lru_cache(maxsize=int(os.getenv('GRAMMARED_LANGUAGE__GRPC_SERVER_CACHE_SIZE', '100000')))
     def predict(self, text: str|list[str]) -> LanguageToolRemoteResult|list[LanguageToolRemoteResult]:
         single = True
         if isinstance(text, list):

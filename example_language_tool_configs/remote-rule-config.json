@@ -2,7 +2,7 @@
   {
     "ruleId": "ML_GRAMMAR_CHECKER",
     "type": "grpc",
-    "url": "localhost",
+    "url": "api-service",
     "port": 50051,
     "language": "en.*",
     "baseTimeoutMilliseconds": 5000,
