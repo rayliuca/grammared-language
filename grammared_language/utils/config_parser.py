@@ -8,6 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from grammared_language.clients.base_client import BaseClient
 
+DEFAULT_MODEL_CONFIG_PATH = "/default_model_config.yaml"
+MODEL_CONFIG_PATH = "/model_config.yaml"
+MODEL_REPO_FOLDER = "/models"
+
 import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +23,7 @@ class ServingConfig(BaseModel):
     
     model_config = ConfigDict(extra='allow')
     
-    triton_hostname: Optional[str] = 'localhost'
+    triton_host: Optional[str] = 'localhost'
     triton_port: Optional[int] = 8001
     triton_model_name: Optional[str] = None
     triton_protocol: Literal['grpc', 'http'] = 'grpc'  # 'grpc' or 'http'
@@ -40,9 +44,9 @@ class ModelInferenceConfig(BaseModel):
     
     model_config = ConfigDict(extra='allow')
     
-    temperature: Optional[float] = None
-    max_length: Optional[int] = None
-    num_beams: Optional[int] = None
+    # temperature: Optional[float] = None
+    # max_length: Optional[int] = None
+    # num_beams: Optional[int] = None
 
 
 class GrammaredConfig(BaseModel):
@@ -160,8 +164,9 @@ def load_config_from_file(config_path: str) -> ModelsConfig:
     
     with open(config_file, 'r') as f:
         config_dict = yaml.safe_load(f)
-    
-    return ModelsConfig.from_dict(config_dict)
+    config = ModelsConfig.from_dict(config_dict)
+    logger.warning(config)
+    return config
 
 
 def load_config_from_env(prefix: str = "GRAMMARED_LANGUAGE") -> ModelsConfig:
@@ -278,6 +283,7 @@ def create_client_from_config(
             client_params = vars(config.serving_config)
             client_params.update(vars(config.grammared_config) if config.grammared_config else {})
 
+            logger.warning(f"Creating GrammarClassificationClient with params: {client_params}")
             return GrammarClassificationClient(**client_params)
             
         elif isinstance(config, CoEditConfig):
@@ -285,13 +291,35 @@ def create_client_from_config(
             
             client_params = vars(config.serving_config)
             client_params.update(vars(config.grammared_config) if config.grammared_config else {})
-
+            
+            logger.warning(f"Creating CoEditClient with params: {client_params}")
             return CoEditClient(**client_params)
             
     except Exception as e:
         logger.error(f"Failed to create client for {model_name}: {e}")
     
     return None
+
+
+"""
+1. check if MODEL_REPO_FOLDER exists
+2. check MODEL_CONFIG_PATH
+3. check environment variable
+4. use DEFAULT_MODEL_CONFIG_PATH
+"""
+def get_config(config_path:str=MODEL_CONFIG_PATH, use_env: bool=True, backup_config_path=DEFAULT_MODEL_CONFIG_PATH) -> ModelsConfig:
+    env_vars = {k: v for k, v in os.environ.items() if k.startswith("GRAMMARED_LANGUAGE__")}
+    # Determine which config path to use
+    if os.path.isfile(config_path):
+        logger.info(f"Loading model configuration from file: {config_path}")
+        config = load_config_from_file(config_path)
+    elif env_vars and use_env:
+        logger.info(f"Loading model configuration from environment variables")
+        config = load_config_from_env()
+    else:
+        logger.info(f"No config path provided. Loading model configuration from backup file: {backup_config_path}")
+        config = load_config_from_file(backup_config_path)
+    return config
 
 
 def create_clients_from_config(config_path: str=None, use_env: bool=True, backup_config_path: str="/default_model_config.yaml") -> List[BaseClient]:
@@ -304,19 +332,11 @@ def create_clients_from_config(config_path: str=None, use_env: bool=True, backup
     Returns:
         List of initialized client instances
     """
-    if config_path is not None:
-        logger.info(f"Loading model configuration from file: {config_path}")
-        models_config = load_config_from_file(config_path)
-    elif use_env:
-        logger.info(f"Loading model configuration from environment variables")
-        models_config = load_config_from_env()
-    else:
-        logger.info(f"No config path provided. Loading model configuration from backup file: {backup_config_path}")
-        models_config = load_config_from_file(backup_config_path)
+    models_config = get_config(config_path=config_path, use_env=use_env, backup_config_path=backup_config_path)
     clients = []
     
-    for model_name, model_config in models_config.models.items():
-        client = create_client_from_config(model_name, model_config)
+    for m_name, m_config in models_config.models.items():
+        client = create_client_from_config(m_name, m_config)
         if client:
             clients.append(client)
     

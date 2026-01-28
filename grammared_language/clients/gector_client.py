@@ -26,7 +26,7 @@ except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
 class GectorClient(BaseClient):
-    def __init__(self, pretrained_model_name_or_path: str, triton_model_name: str=None, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
+    def __init__(self, pretrained_model_name_or_path: str, triton_model_name: str=None, triton_host: str='localhost', triton_port: int=8001, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
         if "rule_id" not in kwargs:
             kwargs["rule_id"] = triton_model_name or pretrained_model_name_or_path or "Gector"
         super().__init__(**kwargs)
@@ -42,7 +42,11 @@ class GectorClient(BaseClient):
         else:
             if GECToRTriton is None:
                 raise ImportError("GECToRTriton is not available in your gector installation. Please upgrade gector or use the standard model.")
-            self.model = GECToRTriton.from_pretrained(pretrained_model_name_or_path, model_name=triton_model_name)
+            self.model = GECToRTriton.from_pretrained(
+                pretrained_model_name_or_path, 
+                model_name=triton_model_name,
+                triton_url=f"{triton_host}:{triton_port}"
+            )
 
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path)
         self.encode, self.decode = load_verb_dict(verb_dict_path)

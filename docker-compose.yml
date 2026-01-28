@@ -51,31 +51,35 @@ services:
     image: grammared-api:latest
     container_name: grammared-api
     ports:
-      - "8000:8000"
+      - "50051:50051"
     volumes:
-      - ./config/api:/app/config:ro
       - ./logs:/app/logs
+      - ./model_config.yaml:/model_config.yaml:ro  # Model configuration
+      - ./data:/data
+      # - triton-cache:/cache  # HuggingFace model cache
+      - ./hf_token:/cache/token  # HuggingFace token for private models
     environment:
-      - TRITON_HOST=triton-server
-      - TRITON_PORT=8001
-      - API_PORT=8000
+      # - GRRAMMARED_LANGUAGE__API_PORT=50051
       - LOG_LEVEL=INFO
+      - GRAMMARED_LANGUAGE__MODEL_CONFIG_PATH=/model_config.yaml
+      # - TRANSFORMERS_CACHE=/cache
+      # - HF_HOME=/cache
     depends_on:
       triton-server:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 10s
     networks:
       - grammared-network
     restart: unless-stopped
 
 networks:
   grammared-network:
-    driver: bridge
+    # driver: bridge
 
 # Volumes for persistent data
 volumes:

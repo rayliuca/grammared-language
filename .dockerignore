@@ -13,16 +13,23 @@
 
 # Python files
 __pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
 *.pyc
 *.pyo
 *.pyd
 .Python
 *.egg-info
 *.egg
+**/*.egg-info
 dist
 build
 .venv
 venv
+**/.venv
+**/venv
 
 # Environment and configuration files (SENSITIVE - NEVER COPY)
 .env
@@ -47,7 +54,6 @@ QUICKSTART.md
 
 # Config directories (not needed in triton image)
 config
-api
 docs
 
 # Temporary and conflict files
@@ -56,7 +62,7 @@ docs
 *.rej
 
 # uv lock files (not needed in container)
-uv.lock
+# uv.lock
 
 # Cache files
 .cache

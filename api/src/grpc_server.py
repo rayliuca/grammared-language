@@ -23,44 +23,28 @@ from grammared_language.clients.coedit_client import CoEditClient
 from grammared_language.api.util import SimpleCacheStore
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 from grammared_language.api.grpc_gen import ml_server_pb2, ml_server_pb2_grpc
+from grammared_language.utils.config_parser import create_clients_from_config, get_config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Model initialization
-model_id = "gotutiyan/gector-deberta-large-5k"
-gector_client = GectorClient(
-    pretrained_model_name_or_path=model_id,
-    triton_model_name="gector_deberta_large",
-    verb_dict_path='data/verb-form-vocab.txt',
-    keep_confidence=0,
-    min_error_prob=0,
-    n_iteration=5,
-    batch_size=2
-)
-
-coedit_client = CoEditClient(
-    model_name="coedit_large",
-    triton_host="localhost",
-    triton_port=8001
-)
+# Model initialization - load from config file
+config_path = os.getenv('GRAMMARED_LANGUAGE__MODEL_CONFIG_PATH', 'model_config.yaml')
+clients = create_clients_from_config(config_path=config_path)
+logger.info(f"Successfully loaded {len(clients)} client(s)")
 
 # Multi-client for running predictions across all configured clients
-correction_multi_client = AsyncMultiClient(
-    clients=[
-        # gector_client,
-        coedit_client,
-    ]
-)
+correction_multi_client = AsyncMultiClient(clients=clients)
 
 # # Initialize ERRANT Grammar Correction Extractor
 # errant_extractor = ErrantGrammarCorrectionExtractor(language='en', min_length=1)
 
-analyze_cache_store = SimpleCacheStore(1)
-process_cache_store = SimpleCacheStore(1)
-match_cache_store = SimpleCacheStore(1)
-match_anylized_cache_store = SimpleCacheStore(1)
+cache_size = int(os.getenv('GRAMMARED_LANGUAGE__GRPC_SERVER_CACHE_SIZE', '100000'))
+analyze_cache_store = SimpleCacheStore(cache_size)
+process_cache_store = SimpleCacheStore(cache_size)
+match_cache_store = SimpleCacheStore(cache_size)
+match_anylized_cache_store = SimpleCacheStore(cache_size)
 
 def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
     """Convert Pydantic Match model to ml_server Match."""
@@ -98,8 +82,7 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
             tags=[]
         ) if match.rule else None
     )
-    print(f"Converted gRPC match: {grpc_match}")
-    print(f"Match Type: {grpc_match.type}")
+
     return grpc_match
 
 class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
@@ -250,7 +233,6 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
                     matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
                 sentence_matches.append(matches)
-            print("Batch successfully processed Match request.")            
             return ml_server_pb2.MatchResponse(sentenceMatches=sentence_matches)
             
         except Exception as e:
@@ -293,7 +275,6 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
                     matches=[pydantic_match_to_ml_match(m) for m in enriched_result.matches]
                 )
                 sentence_matches.append(matches)
-            print("Batch successfully processed MatchAnalyzed request.")
             return ml_server_pb2.MatchResponse(sentenceMatches=sentence_matches)
             
         except Exception as e:
@@ -340,4 +321,6 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
 
 
 if __name__ == "__main__":
-    serve()
+    api_port = int(os.getenv('GRAMMARED_LANGUAGE__API_PORT', '50051'))
+    api_host = os.getenv('GRAMMARED_LANGUAGE__API_HOST', '0.0.0.0')
+    serve(host=api_host, port=api_port)

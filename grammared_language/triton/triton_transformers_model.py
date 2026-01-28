@@ -109,8 +109,10 @@ class TritonTransformersPythonModel:
         )
         self.grammared_language_model_config = get_model_config(self.model_config.get("name", "transfomers_model"), self.grammared_language_model_config)
 
-        default_max_gen_length = "30"
-        self.max_output_length = self.grammared_language_model_config.model_inference_config.max_length or int(default_max_gen_length)
+        default_max_gen_length = 30
+        self.max_output_length = default_max_gen_length
+        if hasattr(self.grammared_language_model_config.model_inference_config, 'max_length'):
+            self.max_output_length = self.grammared_language_model_config.model_inference_config.max_length
         # Check for user-specified model name in model config parameters
         hf_model = self.model_params.get("pretrained_model_name_or_path", {}).get(
             "string_value", self.DEFAULT_HF_MODEL

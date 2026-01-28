@@ -2,6 +2,11 @@ from .base_client import BaseClient
 from typing import Optional
 import numpy as np
 import jinja2
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 try:
     import tritonclient.http as httpclient
@@ -78,8 +83,10 @@ class Text2TextBaseClient(BaseClient):
         self.prompt_template = prompt_template
         self._template = jinja2.Template(prompt_template) if prompt_template else None
         
+        
         # Initialize Triton client based on protocol
         triton_url = f"{triton_host}:{triton_port}"
+        logger.warning(f"triton_url: {triton_url}")
         if self.triton_protocol == "grpc":
             if not _TRITON_GRPC_AVAILABLE:
                 raise ImportError(

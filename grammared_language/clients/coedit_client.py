@@ -1,5 +1,10 @@
 from .text2text_base_client import Text2TextBaseClient
 from typing import Optional
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class CoEditClient(Text2TextBaseClient):
@@ -35,7 +40,6 @@ class CoEditClient(Text2TextBaseClient):
     def __init__(
         self,
         model_name: str = "coedit_large",
-        *,
         triton_host: str = "localhost",
         triton_port: int = 8001,  # Default to gRPC port
         triton_model_version: str = "1",
@@ -43,6 +47,15 @@ class CoEditClient(Text2TextBaseClient):
         prompt_template: str = DEFAULT_PROMPT_TEMPLATE,
         **kwargs
     ):
+        logger.warning({
+            "model_name": model_name,
+            "triton_host": triton_host,
+            "triton_port": triton_port,
+            "triton_model_version": triton_model_version,
+            "triton_protocol": triton_protocol,
+            "prompt_template": prompt_template,
+            "kwargs": kwargs,
+        })
         # Initialize parent with CoEdit-specific defaults
         super().__init__(
             model_name=model_name,

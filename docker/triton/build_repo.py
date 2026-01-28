@@ -1,12 +1,8 @@
 from grammared_language.triton.builder.repo_builder import TritonRepoBuilder
-from grammared_language.utils import config_parser
+from grammared_language.utils.config_parser import get_config, MODEL_REPO_FOLDER
 import os
 import logging
 from pathlib import Path
-
-DEFAULT_MODEL_CONFIG_PATH = "/default_model_config.yaml"
-MODEL_CONFIG_PATH = "/model_config.yaml"
-MODEL_REPO_FOLDER = "/models"
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -40,20 +36,13 @@ def build_triton_model_repo():
     if is_non_empty_dir(MODEL_REPO_FOLDER):
         logger.info(f"Model repository folder '{MODEL_REPO_FOLDER}' already exists and is not empty. Skipping build.")
         return
-    Path(MODEL_REPO_FOLDER).mkdir(parents=True, exist_ok=True)
-    env_vars = {k: v for k, v in os.environ.items() if k.startswith("GRAMMARED_LANGUAGE__")}
-    # Determine which config path to use
-    if os.path.isfile(MODEL_CONFIG_PATH):
-        config = config_parser.load_config_from_file(MODEL_CONFIG_PATH)
-    elif env_vars:
-        config = config_parser.load_config_from_env()
-    else:
-        config = config_parser.load_config_from_file(DEFAULT_MODEL_CONFIG_PATH)
-
+    model_repo_path = os.environ.get("GRAMMARED_LANGUAGE__MODEL_REPO_FOLDER", MODEL_REPO_FOLDER)
+    config = get_config()
     # Build the model repository
+    Path(model_repo_path).mkdir(parents=True, exist_ok=True)
     builder = TritonRepoBuilder()
     builder.build_model_repo(
-        repo_folder=MODEL_REPO_FOLDER,
+        repo_folder=model_repo_path,
         config=config
     )
 
