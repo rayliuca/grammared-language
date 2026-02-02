@@ -19,7 +19,8 @@ RUN pip install --no-cache-dir --break-system-packages uv
 # Create a virtual environment for Python backend
 ENV API_VENV=/python_api_env
 COPY docker/requirements/base.txt /tmp/base.txt
-RUN uv venv $API_VENV && uv pip install --python $API_VENV --requirement /tmp/base.txt torch==2.10.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu && \
+RUN uv venv $API_VENV && uv pip install --python $API_VENV torch==2.10.0+cpu --index-url https://download.pytorch.org/whl/cpu && \
+    uv venv $API_VENV && uv pip install --python $API_VENV --requirement /tmp/base.txt && \
     rm /tmp/base.txt
 
 # Copy only necessary files for package installation

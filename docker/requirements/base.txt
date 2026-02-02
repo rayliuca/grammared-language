@@ -1,13 +1,14 @@
 errant==3.0.0
-fastapi==0.128.0
 gector @ git+https://github.com/rayliuca/gector@3cfc27dcacfe6ac9ec137fba67dcd777736a96d7
 grpcio==1.67.1
-grpcio-tools==1.62.3
+grpcio-tools==1.67.1
 jinja2==3.1.6
 openai==2.15.0
 pydantic==2.12.5
-protobuf==4.25.8
+protobuf==5.29.5
 scikit-learn==1.8.0
 transformers==4.57.6
-tritonclient[grpc]==2.41.1
-uvicorn==0.40.0
+tritonclient[grpc]==2.64.0
+
+errant==3.0.0
+spacy==3.8.11

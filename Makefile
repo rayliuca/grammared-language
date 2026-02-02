@@ -104,10 +104,7 @@ grammared-language-api-gpu:
 grammared-language-triton:
 	docker build -t grammared-language-triton:$(GRRAMMARED_LANGUAGE_VERSION) -t grammared-language-triton:latest -f docker/triton/Dockerfile .
 
-grammared-language-triton-gpu:
-	docker build -t grammared-language-triton-gpu:$(GRRAMMARED_LANGUAGE_VERSION) -t grammared-language-triton-gpu:latest -f docker/triton/Dockerfile-gpu .
-
-docker-build-all: grammared-language-api grammared-language-api-gpu grammared-language-triton grammared-language-triton-gpu
+docker-build-all: grammared-language-api grammared-language-api-gpu grammared-language-triton
 
 constraints-client:
 # 	uv export -o constraints/constraints-base.txt
@@ -118,10 +115,6 @@ constraints-triton:
 # 	uv export -o constraints/constraints-triton.txt --extra triton
 	uv pip compile pyproject.toml -o constraints/constraints-triton.txt --extra triton --emit-index-url
 	grep -v '^-e \.' constraints/constraints-triton.txt > constraints/constraints-triton.txt.tmp && mv constraints/constraints-triton.txt.tmp constraints/constraints-triton.txt
-
-constraints-triton-gpu:
-	uv export -o constraints/constraints-triton-gpu.txt --extra triton --extra gpu
-	grep -v '^-e \.' constraints/constraints-triton-gpu.txt > constraints/constraints-triton-gpu.txt.tmp && mv constraints/constraints-triton-gpu.txt.tmp constraints/constraints-triton-gpu.txt
 
 constraints-dev:
 	uv export -o constraints/constraints-all.txt --extra all

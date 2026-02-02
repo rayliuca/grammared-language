@@ -22,8 +22,9 @@ ENV API_VENV=/python_api_env
 COPY docker/requirements/base.txt /tmp/base.txt
 COPY docker/requirements/gpu.txt /tmp/gpu.txt
 
-RUN uv venv $API_VENV && uv pip install --python $API_VENV --requirement /tmp/base.txt && \
-    uv pip install --python $API_VENV --requirement /tmp/gpu.txt torch && \
+RUN uv venv $API_VENV && uv pip install --python $API_VENV torch --index-url https://download.pytorch.org/whl/cu128 && \
+    uv venv $API_VENV && uv pip install --python $API_VENV --requirement /tmp/base.txt && \
+    uv pip install --python $API_VENV --requirement /tmp/gpu.txt --extra-index-url https://download.pytorch.org/whl/cu128  && \
     rm /tmp/base.txt /tmp/gpu.txt
 
 # Copy only necessary files for package installation
