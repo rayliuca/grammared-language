@@ -2,19 +2,12 @@
 # This is a placeholder/template for the Triton server Docker image
 
 # Use NVIDIA Triton Inference Server as base image
-FROM nvcr.io/nvidia/tritonserver:25.07-py3-min
+# FROM nvcr.io/nvidia/tritonserver:25.07-vllm-python-py3
+FROM nvcr.io/nvidia/tritonserver:25.07-vllm-python-py3
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    curl git pip bash \
-    && rm -rf /var/lib/apt/lists/* && \
-    rm -rf /usr/local/cuda-12.9 && \
-    rm -rf /usr/lib/x86_64-linux-gnu/libnvinfer* && \
-    rm -rf /usr/lib/x86_64-linux-gnu/libnccl* && \
-    rm -rf /usr/lib/x86_64-linux-gnu/libcudn*
-
-# Set working directory
-WORKDIR /
+    curl git pip bash && \
+    apt-get clean
 
 # Install uv for fast Python package management, using shared pip cache
 # Use --break-system-packages since this is a container environment
@@ -28,16 +21,16 @@ RUN uv venv $TRITON_VENV
 # Copy requirements file
 COPY docker/requirements/base.txt /tmp/base.txt
 COPY docker/requirements/triton.txt /tmp/triton.txt
+COPY docker/requirements/gpu.txt /tmp/gpu.txt
 
 # Install grammared-language package with triton extras in the virtual environment
-# RUN uv pip install --python $TRITON_VENV \
-#     -r /tmp/base.txt -r /tmp/triton.txt torch==2.10.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu --no-cache && \
-#     rm /tmp/base.txt /tmp/triton.txt && uv cache clean && rm -rf /root/.cache/pip
-
-RUN uv pip install \
-    -r /tmp/base.txt -r /tmp/triton.txt torch==2.10.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu --no-cache && \
-    rm /tmp/base.txt /tmp/triton.txt && uv cache clean && rm -rf /root/.cache/pip
-
+RUN uv pip install --python $TRITON_VENV \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 --no-cache-dir && \
+    uv pip install --python $TRITON_VENV \
+    -r /tmp/gpu.txt --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cu128 && \
+    uv pip install --python $TRITON_VENV \
+    -r /tmp/base.txt -r /tmp/triton.txt  && \
+    rm /tmp/base.txt /tmp/triton.txt /tmp/gpu.txt
 
 # Copy only necessary files for package installation
 # Copy package source code
@@ -45,14 +38,12 @@ COPY pyproject.toml /grammared_language/
 COPY grammared_language/ /grammared_language/grammared_language/
 
 WORKDIR /grammared_language
-# RUN uv pip install --python $TRITON_VENV \
-RUN uv pip install \
-    .[docker,triton] --no-cache && uv cache clean && rm -rf /root/.cache/pip
+RUN uv pip install --python $TRITON_VENV \
+    .[triton,gpu] --no-cache-dir
 
-
-# # Create a symlink to the actual Python site-packages for consistent path references
-# RUN PYTHON_VERSION=$($TRITON_VENV/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
-#     ln -s $TRITON_VENV/lib/python${PYTHON_VERSION}/site-packages $TRITON_VENV/site-packages
+# Create a symlink to the actual Python site-packages for consistent path references
+RUN PYTHON_VERSION=$($TRITON_VENV/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
+    ln -s $TRITON_VENV/lib/python${PYTHON_VERSION}/site-packages $TRITON_VENV/site-packages
 
 # Copy custom backends or configurations if needed
 # COPY triton_server/custom_backends/ /opt/tritonserver/backends/
@@ -67,12 +58,15 @@ ENV LOG_VERBOSE=0
 ENV TRANSFORMERS_CACHE=/cache
 ENV HF_HOME=/cache
 
-# # Add virtual environment to PATH so Python uses it
-# ENV PATH="$TRITON_VENV/bin:$PATH"
-# # Set PYTHONPATH to include the virtual environment's site-packages
-# # This ensures Triton's Python backend can find installed packages
-# # Using the symlink created earlier for version-independent path
-# ENV PYTHONPATH="$TRITON_VENV/site-packages:$PYTHONPATH"
+# Add virtual environment to PATH so Python uses it
+ENV PATH="$TRITON_VENV/bin:$PATH"
+# Set PYTHONPATH to include the virtual environment's site-packages
+# This ensures Triton's Python backend can find installed packages
+# Using the symlink created earlier for version-independent path
+ENV PYTHONPATH="$TRITON_VENV/site-packages:$PYTHONPATH"
+
+# Check and output if CUDA is available in the container
+RUN $TRITON_VENV/bin/python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
 
 # Change working directory to root to avoid import conflicts with /grammared_language
 WORKDIR /
@@ -91,6 +85,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/v2/health/ready || exit 1
 
 # Default command to build model repository then start Triton server
-# CMD ["/bin/bash", "-c", "$TRITON_VENV/bin/python /build_repo.py && tritonserver --model-repository=/models --log-verbose=1"]
-CMD ["/bin/bash", "-c", "python /build_repo.py && tritonserver --model-repository=/models --log-verbose=1"]
-
+CMD ["/bin/bash", "-c", "$TRITON_VENV/bin/python /build_repo.py && tritonserver --model-repository=/models --log-verbose=1"]

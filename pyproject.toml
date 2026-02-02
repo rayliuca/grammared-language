@@ -111,22 +111,3 @@ profile = "black"
 
 [tool.uv.sources]
 gector = { git = "https://github.com/rayliuca/gector" }
-torch = [
-    { index = "torch-cpu", marker = "extra != 'triton'" },
-    { index = "cuda-128", marker = "extra == 'triton'" },
-]
-
-
-[[tool.uv.index]]
-name = "pypi"
-url = "https://pypi.org/simple/"
-
-[[tool.uv.index]]
-name = "torch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-# priority = "explicit"
-default = true
-
-[[tool.uv.index]]
-name = "cuda-128"
-url = "https://download.pytorch.org/whl/cu128"

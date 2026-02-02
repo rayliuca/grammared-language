@@ -28,8 +28,8 @@ class ServingConfig(BaseModel):
     triton_model_name: Optional[str] = None
     triton_protocol: Literal['grpc', 'http'] = 'grpc'  # 'grpc' or 'http'
     pretrained_model_name_or_path: Optional[str] = None
-    backend: Optional[str] = None
-    device: Optional[str] = None
+    backend: Optional[str] = "transformers" # "transformers", "ort"
+    device: Optional[str] = "auto"  # "cpu", "cuda", or "auto"
     
 
 class ModelInitConfig(BaseModel):

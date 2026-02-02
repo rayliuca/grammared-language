@@ -10,6 +10,8 @@ import grpc
 import time
 import sys
 import os
+from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Add parent directory to path for absolute imports
 if __name__ == "__main__":
@@ -45,6 +47,9 @@ analyze_cache_store = SimpleCacheStore(cache_size)
 process_cache_store = SimpleCacheStore(cache_size)
 match_cache_store = SimpleCacheStore(cache_size)
 match_anylized_cache_store = SimpleCacheStore(cache_size)
+
+# Health check state
+service_healthy = False
 
 def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_pb2.Match:
     """Convert Pydantic Match model to ml_server Match."""
@@ -84,6 +89,32 @@ def pydantic_match_to_ml_match(match, offset_adjustment: int = 0) -> ml_server_p
     )
 
     return grpc_match
+
+
+class HealthCheckHTTPHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler for Docker health checks."""
+    
+    def do_GET(self):
+        """Handle GET requests for health check."""
+        if self.path == '/health' or self.path == '/healthz':
+            if service_healthy:
+                self.send_response(200)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b'OK')
+            else:
+                self.send_response(503)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b'Service not ready')
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        """Suppress HTTP server logging."""
+        pass
+
 
 class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
     """gRPC servicer for LanguageTool ProcessingServer."""
@@ -216,15 +247,15 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             results = {i:None for i in range(len(request.sentences))}
             match_tasks = [] # (idx, text)
             for i, analyzed_sentence in enumerate(request.sentences):
-                if match_anylized_cache_store.contains(analyzed_sentence):
-                    results[i] = match_anylized_cache_store.get(analyzed_sentence)
+                if match_cache_store.contains(analyzed_sentence):
+                    results[i] = match_cache_store.get(analyzed_sentence)
                 else:
                     match_tasks.append((i, analyzed_sentence))
 
             task_results = correction_multi_client.predict_with_merge([s for _, s in match_tasks])
             for (idx, _), result in zip(match_tasks, task_results):
                 results[idx] = result
-                match_anylized_cache_store.add(request.sentences[idx], result)
+                match_cache_store.add(request.sentences[idx], result)
             
             sentence_matches = []
             for i in range(len(request.sentences)):
@@ -284,15 +315,18 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             raise
 
 
-def serve(host: str = "0.0.0.0", port: int = 50051):
+def serve(host: str = "0.0.0.0", port: int = 50051, health_port: int = 50052):
     """
     Start the gRPC server with ProcessingServer and MLServer services.
     
     Args:
         host: Host to bind to
         port: Port to bind to
+        health_port: Port for HTTP health check endpoint
     """
-    # Create server
+    global service_healthy
+    
+    # Create gRPC server
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=50))
     
     # Add servicers
@@ -312,11 +346,25 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
     logger.info("  - lt_ml_server.MLServer (Match, MatchAnalyzed)")
     server.start()
     
+    # Start HTTP health check server in a background thread
+    def run_http_health_server():
+        health_server = HTTPServer((host, health_port), HealthCheckHTTPHandler)
+        logger.info(f"Starting HTTP health check server on {host}:{health_port}")
+        health_server.serve_forever()
+    
+    health_thread = Thread(target=run_http_health_server, daemon=True)
+    health_thread.start()
+    
+    # Mark service as healthy after successful startup
+    service_healthy = True
+    logger.info("Service marked as healthy")
+    
     try:
         while True:
             time.sleep(86400)
     except KeyboardInterrupt:
         logger.info("Shutting down gRPC server")
+        service_healthy = False
         server.stop(0)
 
 

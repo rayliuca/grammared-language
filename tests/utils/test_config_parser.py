@@ -196,8 +196,8 @@ class TestCreateClientsFromConfig:
     """Test create_clients_from_config function."""
     
     @patch('grammared_language.utils.config_parser.create_client_from_config')
-    @patch('grammared_language.utils.config_parser.load_config_from_file')
-    def test_create_clients_from_config(self, mock_load, mock_create):
+    @patch('grammared_language.utils.config_parser.get_config')
+    def test_create_clients_from_config(self, mock_get_config, mock_create):
         """Test creating multiple clients from config file."""
         mock_models_config = ModelsConfig(
             models={
@@ -219,7 +219,7 @@ class TestCreateClientsFromConfig:
                 )
             }
         )
-        mock_load.return_value = mock_models_config
+        mock_get_config.return_value = mock_models_config
         
         mock_client1 = Mock()
         mock_client2 = Mock()
@@ -232,8 +232,8 @@ class TestCreateClientsFromConfig:
         assert result[1] == mock_client2
     
     @patch('grammared_language.utils.config_parser.create_client_from_config')
-    @patch('grammared_language.utils.config_parser.load_config_from_file')
-    def test_create_clients_skip_invalid(self, mock_load, mock_create):
+    @patch('grammared_language.utils.config_parser.get_config')
+    def test_create_clients_skip_invalid(self, mock_get_config, mock_create):
         """Test that invalid clients are skipped."""
         mock_models_config = ModelsConfig(
             models={
@@ -255,7 +255,7 @@ class TestCreateClientsFromConfig:
                 )
             }
         )
-        mock_load.return_value = mock_models_config
+        mock_get_config.return_value = mock_models_config
         
         mock_client1 = Mock()
         mock_client3 = Mock()
@@ -268,8 +268,8 @@ class TestCreateClientsFromConfig:
         assert mock_create.call_count == 2
     
     @patch('grammared_language.utils.config_parser.create_client_from_config')
-    @patch('grammared_language.utils.config_parser.load_config_from_file')
-    def test_create_clients_handle_none_return(self, mock_load, mock_create):
+    @patch('grammared_language.utils.config_parser.get_config')
+    def test_create_clients_handle_none_return(self, mock_get_config, mock_create):
         """Test that None returns from create_client_from_config are filtered."""
         mock_models_config = ModelsConfig(
             models={
@@ -291,7 +291,7 @@ class TestCreateClientsFromConfig:
                 )
             }
         )
-        mock_load.return_value = mock_models_config
+        mock_get_config.return_value = mock_models_config
         
         mock_client1 = Mock()
         mock_create.side_effect = [mock_client1, None]

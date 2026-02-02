@@ -16,15 +16,29 @@ class MockClient(BaseClient):
         self.name = name
         self.return_matches = return_matches or []
     
-    def _predict(self, text: str) -> str:
+    def _predict(self, text: str | list[str]) -> str | list[str]:
+        """Return text as-is (no actual prediction)."""
         return text
     
-    def predict(self, text: str) -> LanguageToolRemoteResult:
-        return LanguageToolRemoteResult(
-            language="English",
-            languageCode="en-US",
-            matches=self.return_matches
-        )
+    def predict(self, text: str | list[str]) -> LanguageToolRemoteResult | list[LanguageToolRemoteResult]:
+        """Handle both single text and batch of texts."""
+        if isinstance(text, list):
+            # Batch processing
+            return [
+                LanguageToolRemoteResult(
+                    language="English",
+                    languageCode="en-US",
+                    matches=self.return_matches
+                )
+                for _ in text
+            ]
+        else:
+            # Single text
+            return LanguageToolRemoteResult(
+                language="English",
+                languageCode="en-US",
+                matches=self.return_matches
+            )
 
 
 class TestAsyncMultiClient:
@@ -186,9 +200,13 @@ class TestAsyncMultiClient:
         assert len(results) == 1
         assert results[0].matches[0].message == "Test error 1"
     
-    def test_init_from_config_file_not_found(self):
-        """Test that FileNotFoundError is raised for missing config."""
-        with pytest.raises(FileNotFoundError, match="Config file not found"):
+    @patch('grammared_language.clients.async_multi_client.create_clients_from_config')
+    def test_init_from_config_file_not_found(self, mock_create_clients):
+        """Test that error is raised for missing config without fallback."""
+        # Mock create_clients_from_config to raise FileNotFoundError
+        mock_create_clients.side_effect = FileNotFoundError("Config file not found")
+        
+        with pytest.raises(FileNotFoundError):
             AsyncMultiClient(config_path="nonexistent_config.yaml")
     
     @pytest.mark.asyncio
