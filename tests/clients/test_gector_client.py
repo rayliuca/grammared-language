@@ -102,8 +102,12 @@ class TestGectorClientUnit:
             verb_dict_path="test-vocab.txt"
         )
         
-        # Verify Triton model was used
-        mock_gector_triton.from_pretrained.assert_called_once_with("test-model", model_name=MODEL_NAME)
+        # Verify Triton model was used (with triton_url parameter)
+        mock_gector_triton.from_pretrained.assert_called_once_with(
+            "test-model", 
+            model_name=MODEL_NAME,
+            triton_url='localhost:8001'
+        )
         assert client.model is not None
     
     @pytest.mark.unit

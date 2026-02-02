@@ -5,7 +5,7 @@ import sys
 import os
 
 try:
-    import tritonclient.http as httpclient
+    import tritonclient.grpc as grpcclient
     TRITON_AVAILABLE = True
 except ImportError:
     TRITON_AVAILABLE = False
@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(
 def triton_client():
     """Create Triton client for testing."""
     try:
-        client = httpclient.InferenceServerClient(url="localhost:8000")
+        client = grpcclient.InferenceServerClient(url="localhost:8001")
         if not client.is_server_live():
             pytest.skip("Triton server is not live")
         return client
@@ -120,8 +120,8 @@ class TestGECToRModel:
         
         # Prepare inputs
         inputs = [
-            httpclient.InferInput("input_ids", input_ids.shape, "INT64"),
-            httpclient.InferInput("attention_mask", attention_mask.shape, "INT64")
+            grpcclient.InferInput("input_ids", input_ids.shape, "INT64"),
+            grpcclient.InferInput("attention_mask", attention_mask.shape, "INT64")
         ]
         
         inputs[0].set_data_from_numpy(input_ids)
@@ -129,8 +129,8 @@ class TestGECToRModel:
         
         # Prepare outputs
         outputs = [
-            httpclient.InferRequestedOutput("logits_labels"),
-            httpclient.InferRequestedOutput("logits_d") 
+            grpcclient.InferRequestedOutput("logits_labels"),
+            grpcclient.InferRequestedOutput("logits_d") 
         ]
         
         # Run inference
@@ -177,8 +177,8 @@ class TestGECToRModel:
         
         # Prepare inputs
         inputs = [
-            httpclient.InferInput("input_ids", input_ids.shape, "INT64"),
-            httpclient.InferInput("attention_mask", attention_mask.shape, "INT64")
+            grpcclient.InferInput("input_ids", input_ids.shape, "INT64"),
+            grpcclient.InferInput("attention_mask", attention_mask.shape, "INT64")
         ]
         
         inputs[0].set_data_from_numpy(input_ids)
@@ -186,7 +186,7 @@ class TestGECToRModel:
         
         # Prepare outputs
         outputs = [
-            httpclient.InferRequestedOutput("logits_labels")
+            grpcclient.InferRequestedOutput("logits_labels")
         ]
         
         # Run inference
@@ -228,14 +228,14 @@ class TestModelPerformance:
         
         # Prepare inputs
         inputs = [
-            httpclient.InferInput("input_ids", input_ids.shape, "INT64"),
-            httpclient.InferInput("attention_mask", attention_mask.shape, "INT64")
+            grpcclient.InferInput("input_ids", input_ids.shape, "INT64"),
+            grpcclient.InferInput("attention_mask", attention_mask.shape, "INT64")
         ]
         
         inputs[0].set_data_from_numpy(input_ids)
         inputs[1].set_data_from_numpy(attention_mask)
         
-        outputs = [httpclient.InferRequestedOutput("logits_labels")]
+        outputs = [grpcclient.InferRequestedOutput("logits_labels")]
         
         # Measure latency
         start_time = time.time()

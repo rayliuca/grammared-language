@@ -5,7 +5,7 @@ import json
 import os
 
 try:
-    import tritonclient.http as httpclient
+    import tritonclient.grpc as grpcclient
     TRITON_AVAILABLE = True
 except ImportError:
     TRITON_AVAILABLE = False
@@ -22,7 +22,7 @@ pytestmark = pytest.mark.skipif(
 def triton_client():
     """Create Triton client for testing."""
     try:
-        client = httpclient.InferenceServerClient(url="localhost:8000")
+        client = grpcclient.InferenceServerClient(url="localhost:8001")
         if not client.is_server_live():
             pytest.skip("Triton server is not live")
         return client
@@ -67,13 +67,13 @@ class TestClassifierModel:
         
         # Prepare inputs
         inputs = [
-            httpclient.InferInput("TEXT", [1, 1], "BYTES")
+            grpcclient.InferInput("TEXT", [1, 1], "BYTES")
         ]
         inputs[0].set_data_from_numpy(text_data)
         
         # Prepare outputs
         outputs = [
-            httpclient.InferRequestedOutput("OUTPUT")
+            grpcclient.InferRequestedOutput("OUTPUT")
         ]
         
         # Send inference request
@@ -117,12 +117,12 @@ class TestClassifierModel:
             text_data = np.array([[text]], dtype=object)
             
             inputs = [
-                httpclient.InferInput("TEXT", [1, 1], "BYTES")
+                grpcclient.InferInput("TEXT", [1, 1], "BYTES")
             ]
             inputs[0].set_data_from_numpy(text_data)
             
             outputs = [
-                httpclient.InferRequestedOutput("OUTPUT")
+                grpcclient.InferRequestedOutput("OUTPUT")
             ]
             
             response = triton_client.infer(
@@ -157,12 +157,12 @@ class TestClassifierModel:
         text_data = np.array([[test_text]], dtype=object)
         
         inputs = [
-            httpclient.InferInput("TEXT", [1, 1], "BYTES")
+            grpcclient.InferInput("TEXT", [1, 1], "BYTES")
         ]
         inputs[0].set_data_from_numpy(text_data)
         
         outputs = [
-            httpclient.InferRequestedOutput("OUTPUT")
+            grpcclient.InferRequestedOutput("OUTPUT")
         ]
         
         response = triton_client.infer(
@@ -194,12 +194,12 @@ class TestClassifierModel:
         text_data = np.array([""], dtype=object)
         
         inputs = [
-            httpclient.InferInput("TEXT", text_data.shape, "BYTES")
+            grpcclient.InferInput("TEXT", text_data.shape, "BYTES")
         ]
         inputs[0].set_data_from_numpy(text_data)
         
         outputs = [
-            httpclient.InferRequestedOutput("OUTPUT")
+            grpcclient.InferRequestedOutput("OUTPUT")
         ]
         
         # Should handle gracefully or raise appropriate error
