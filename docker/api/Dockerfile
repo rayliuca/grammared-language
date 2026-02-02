@@ -9,7 +9,7 @@ WORKDIR /
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    curl git \
+    curl git bash build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast Python package management, using shared pip cache
@@ -18,9 +18,9 @@ RUN pip install --no-cache-dir --break-system-packages uv
 
 # Create a virtual environment for Python backend
 ENV API_VENV=/python_api_env
-COPY constraints.txt constraints.txt
-RUN uv venv $API_VENV && uv pip install --python $API_VENV -r constraints.txt
-
+COPY docker/requirements/base.txt /tmp/base.txt
+RUN uv venv $API_VENV && uv pip install --python $API_VENV --requirement /tmp/base.txt torch==2.10.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu && \
+    rm /tmp/base.txt
 
 # Copy only necessary files for package installation
 # Copy package source code
@@ -28,7 +28,7 @@ COPY pyproject.toml /grammared_language/
 COPY grammared_language/ /grammared_language/grammared_language/
 
 WORKDIR /grammared_language
-RUN uv pip install --python $API_VENV .[api] && \
+RUN uv pip install --python $API_VENV .[docker] && \
     find $API_VENV -type f -name "*.pyc" -delete && \
     find $API_VENV -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
     find $API_VENV -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
