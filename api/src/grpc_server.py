@@ -289,15 +289,17 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
             results = {i:None for i in range(len(request.sentences))}
             match_tasks = [] # (idx, text)
             for i, analyzed_sentence in enumerate(request.sentences):
-                if match_anylized_cache_store.contains(analyzed_sentence):
-                    results[i] = match_anylized_cache_store.get(analyzed_sentence)
+                # Serialize protobuf to string for hashing
+                cache_key = analyzed_sentence.text
+                if match_anylized_cache_store.contains(cache_key):
+                    results[i] = match_anylized_cache_store.get(cache_key)
                 else:
                     match_tasks.append((i, analyzed_sentence))
 
-            task_results = correction_multi_client.predict_with_merge([s for _, s in match_tasks])
-            for (idx, _), result in zip(match_tasks, task_results):
+            task_results = correction_multi_client.predict_with_merge([s.text for _, s in match_tasks])
+            for (idx, analyzed_sentence), result in zip(match_tasks, task_results):
                 results[idx] = result
-                match_anylized_cache_store.add(request.sentences[idx], result)
+                match_anylized_cache_store.add(analyzed_sentence.text, result)
             
             sentence_matches = []
             for i in range(len(request.sentences)):

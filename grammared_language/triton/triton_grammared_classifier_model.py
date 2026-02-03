@@ -41,8 +41,6 @@ class TritonGrammaredClassifierPythonModel:
         model_device_type = args['model_instance_kind']
         model_instance_device_id = args['model_instance_device_id']
 
-        print("Model instance kind:", model_device_type)
-        print("Model instance device id:", model_instance_device_id)
         # Determine device
         if self.grammared_language_model_config.serving_config.device == 'cpu':
             self.device = 'cpu'
@@ -66,7 +64,10 @@ class TritonGrammaredClassifierPythonModel:
             from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
             logger.info(f"Loading model: {model_name}")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            use_fast=True
+            if "deberta-v" in model_name.lower():
+                use_fast=False  # Some models have issues with fast tokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=use_fast)
             self.model = AutoModelForSequenceClassification.from_pretrained(model_name, device_map=self.device,)
             self.device = self.model.device
 

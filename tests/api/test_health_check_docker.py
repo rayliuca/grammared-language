@@ -104,7 +104,7 @@ def test_docker_healthcheck_instruction():
         dockerfile_content = f.read()
     
     assert "HEALTHCHECK" in dockerfile_content
-    assert "curl -f http://localhost:8000/health" in dockerfile_content
+    assert "curl -f http://localhost:50052/health" in dockerfile_content
     assert "start-period=30s" in dockerfile_content
 
 
@@ -118,7 +118,7 @@ def test_docker_compose_health_check():
     # Check that api-service has healthcheck configured
     assert "api-service:" in compose_content
     assert "healthcheck:" in compose_content
-    assert "http://localhost:8000/health" in compose_content
+    assert "http://localhost:50052/health" in compose_content
     assert "interval: 10s" in compose_content
     assert "start_period: 30s" in compose_content
 
@@ -130,4 +130,4 @@ def test_health_check_ports_exposed():
     
     assert "EXPOSE" in dockerfile_content
     assert "50051" in dockerfile_content
-    assert "8000" in dockerfile_content
+    assert "50052" in dockerfile_content

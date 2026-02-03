@@ -225,8 +225,8 @@ class TestGectorClientNonHermetic:
         
         try:
             # Check if Triton server is available
-            import tritonclient.http as httpclient
-            triton_client = httpclient.InferenceServerClient(url="localhost:8000")
+            import tritonclient.grpc as grpcclient
+            triton_client = grpcclient.InferenceServerClient(url="localhost:8001")
             if not triton_client.is_server_live():
                 pytest.skip("Triton server is not live")
             

@@ -45,13 +45,31 @@ def triton_ready():
 
 
 @pytest.fixture(scope="module")
-def config_path():
-    """Return path to model_config.yaml."""
+def config_path(tmp_path_factory):
+    """Return path to test config with localhost."""
+    import yaml
+    
     project_root = Path(__file__).parent.parent.parent
     config_file = project_root / "model_config.yaml"
     if not config_file.exists():
         pytest.skip(f"Config file not found: {config_file}")
-    return str(config_file)
+    
+    # Load the config and patch triton_host to localhost for testing
+    with open(config_file, 'r') as f:
+        config_dict = yaml.safe_load(f)
+    
+    # Replace all triton-server references with localhost
+    for model_name, model_config in config_dict.items():
+        if 'serving_config' in model_config and 'triton_host' in model_config['serving_config']:
+            model_config['serving_config']['triton_host'] = 'localhost'
+    
+    # Write to temporary file
+    tmp_dir = tmp_path_factory.mktemp("config")
+    tmp_config = tmp_dir / "test_config.yaml"
+    with open(tmp_config, 'w') as f:
+        yaml.dump(config_dict, f)
+    
+    return str(tmp_config)
 
 
 class TestAsyncMultiClientFromConfig:
@@ -149,7 +167,9 @@ class TestAsyncMultiClientWithManualClients:
         try:
             gector = GectorClient(
                 pretrained_model_name_or_path="gotutiyan/gector-deberta-large-5k",
-                triton_model_name="gector_deberta_large"
+                triton_model_name="gector_deberta_large",
+                triton_host="localhost",
+                triton_port=8001
             )
             clients.append(gector)
         except Exception as e:
@@ -158,7 +178,7 @@ class TestAsyncMultiClientWithManualClients:
         # Try to add GrammarClassificationClient with gRPC
         try:
             classifier = GrammarClassificationClient(
-                model_id="rayliuca/grammared-classifier-deberta-v3-small",
+                pretrained_model_name_or_path="rayliuca/grammared-classifier-deberta-v3-small",
                 backend="triton",
                 triton_model_name="grammared-classifier-deberta-v3-small",
                 triton_host="localhost",

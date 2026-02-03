@@ -83,21 +83,23 @@ class TestGECToRModel:
         """Test retrieving model metadata."""
         metadata = triton_client.get_model_metadata(model_name)
         
-        assert 'versions' in metadata
-        assert 'platform' in metadata
-        assert 'inputs' in metadata
-        assert 'outputs' in metadata
-        assert len(metadata['inputs']) > 0
-        assert len(metadata['outputs']) > 0
+        # metadata is a protobuf object, access attributes directly
+        assert hasattr(metadata, 'versions')
+        assert hasattr(metadata, 'platform')
+        assert hasattr(metadata, 'inputs')
+        assert hasattr(metadata, 'outputs')
+        assert len(metadata.inputs) > 0
+        assert len(metadata.outputs) > 0
     
     def test_model_config(self, triton_client, model_name):
         """Test retrieving model configuration."""
         config = triton_client.get_model_config(model_name)
         
-        # In some versions it returns {'config': {...}}, in others the config directly
-        model_config = config.get('config', config)
-        assert 'name' in model_config
-        assert model_config['name'] == model_name
+        # config is a protobuf object, access attributes directly
+        assert hasattr(config, 'config')
+        model_config = config.config
+        assert hasattr(model_config, 'name')
+        assert model_config.name == model_name
     
     @pytest.mark.parametrize("test_text", [
         "This is a simple test.",
