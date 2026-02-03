@@ -31,7 +31,7 @@ def test_http_health_check_endpoint_when_healthy(grpc_server_fixture):
     # Give server time to start
     time.sleep(0.5)
     
-    response = requests.get("http://localhost:50052/health", timeout=5)
+    response = requests.get("http://localhost:50054/health", timeout=5)
     assert response.status_code == 200
     assert response.text == "OK"
 
@@ -40,7 +40,7 @@ def test_http_healthz_endpoint_when_healthy(grpc_server_fixture):
     """Test HTTP /healthz endpoint returns 200 when service is healthy."""
     time.sleep(0.5)
     
-    response = requests.get("http://localhost:50052/healthz", timeout=5)
+    response = requests.get("http://localhost:50054/healthz", timeout=5)
     assert response.status_code == 200
     assert response.text == "OK"
 
@@ -49,7 +49,7 @@ def test_http_health_check_invalid_path(grpc_server_fixture):
     """Test HTTP health check returns 404 for invalid paths."""
     time.sleep(0.5)
     
-    response = requests.get("http://localhost:50052/invalid", timeout=5)
+    response = requests.get("http://localhost:50054/invalid", timeout=5)
     assert response.status_code == 404
 
 
@@ -57,7 +57,7 @@ def test_http_health_check_content_type(grpc_server_fixture):
     """Test HTTP health check response has correct content type."""
     time.sleep(0.5)
     
-    response = requests.get("http://localhost:50052/health", timeout=5)
+    response = requests.get("http://localhost:50054/health", timeout=5)
     assert response.headers.get("Content-type") == "text/plain"
 
 
@@ -66,7 +66,7 @@ def test_multiple_http_health_checks(grpc_server_fixture):
     time.sleep(0.5)
     
     for _ in range(5):
-        response = requests.get("http://localhost:50052/health", timeout=5)
+        response = requests.get("http://localhost:50054/health", timeout=5)
         assert response.status_code == 200
         assert response.text == "OK"
 
@@ -76,7 +76,7 @@ def test_http_health_check_timeout_handling(grpc_server_fixture):
     time.sleep(0.5)
     
     # Should succeed with reasonable timeout
-    response = requests.get("http://localhost:50052/health", timeout=10)
+    response = requests.get("http://localhost:50054/health", timeout=10)
     assert response.status_code == 200
 
 
@@ -93,8 +93,8 @@ def grpc_server_fixture():
     import sys
     import os
     
-    # Set up test environment
-    os.environ['GRAMMARED_LANGUAGE__API_PORT'] = '50051'
+    # Set up test environment - use different port from docker service (50051)
+    os.environ['GRAMMARED_LANGUAGE__API_PORT'] = '50053'
     os.environ['GRAMMARED_LANGUAGE__API_HOST'] = '0.0.0.0'
     
     # Import here to avoid import errors if dependencies aren't available
@@ -103,8 +103,11 @@ def grpc_server_fixture():
     except ImportError:
         pytest.skip("gRPC server module not available")
     
-    # Start server in background thread
-    server_thread = threading.Thread(target=serve, daemon=True)
+    # Start server in background thread with different health port
+    server_thread = threading.Thread(
+        target=lambda: serve(host='0.0.0.0', port=50053, health_port=50054),
+        daemon=True
+    )
     server_thread.start()
     
     # Wait for server to be ready
@@ -137,7 +140,7 @@ def test_grpc_server_with_actual_models():
     time.sleep(3)
     
     # Test health endpoint
-    response = requests.get("http://localhost:50052/health")
+    response = requests.get("http://localhost:50054/health")
     assert response.status_code == 200
 
 
@@ -146,7 +149,7 @@ def test_grpc_server_with_actual_models():
 def test_http_health_check_endpoint_not_available():
     """Test that health check endpoint is not available if server isn't running."""
     try:
-        response = requests.get("http://localhost:50052/health", timeout=1)
+        response = requests.get("http://localhost:50054/health", timeout=1)
         pytest.fail("Server should not be running")
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         # Expected - server is not running
