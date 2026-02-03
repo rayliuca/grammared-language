@@ -7,7 +7,7 @@ services:
     build:
       context: .
       dockerfile: docker/triton/Dockerfile
-    image: grammared-triton:latest
+    image: grammared-language-triton:latest
     container_name: grammared-triton
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
@@ -48,10 +48,11 @@ services:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
-    image: grammared-api:latest
+    image: grammared-language-api:latest
     container_name: grammared-api
     ports:
       - "50051:50051"
+      - "50052:50052"
     volumes:
       - ./logs:/app/logs
       - ./model_config.yaml:/model_config.yaml:ro  # Model configuration
@@ -67,12 +68,12 @@ services:
     depends_on:
       triton-server:
         condition: service_healthy
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 3
-    #   start_period: 10s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50052/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - grammared-network
     restart: unless-stopped
@@ -101,7 +102,7 @@ services:
       langtool_remoteRulesFile: /remote-rule-config.json      
     volumes:
       - ./ngrams:/ngrams
-      - ./fasttext:/fasttext
+      - fasttext:/fasttext
       - ./example_language_tool_configs/remote-rule-config.json:/remote-rule-config.json:ro
     networks:
       - grammared-network
@@ -112,4 +113,6 @@ networks:
 # Volumes for persistent data
 volumes:
   triton-cache:
+    driver: local
+  fasttext:
     driver: local

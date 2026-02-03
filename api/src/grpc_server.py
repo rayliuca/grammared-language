@@ -10,7 +10,7 @@ import grpc
 import time
 import sys
 import os
-from threading import Thread
+from threading import Thread, Lock
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Add parent directory to path for absolute imports
@@ -31,13 +31,90 @@ from grammared_language.utils.config_parser import create_clients_from_config, g
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Model initialization - load from config file
-config_path = os.getenv('GRAMMARED_LANGUAGE__MODEL_CONFIG_PATH', 'model_config.yaml')
-clients = create_clients_from_config(config_path=config_path)
-logger.info(f"Successfully loaded {len(clients)} client(s)")
+# Global variables for clients
+correction_multi_client = None
+client_lock = Lock()
 
-# Multi-client for running predictions across all configured clients
-correction_multi_client = AsyncMultiClient(clients=clients)
+def initialize_clients(max_retries: int = 5, retry_delay: int = 10):
+    """
+    Initialize clients from config with retry logic.
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        retry_delay: Delay in seconds between retries
+        
+    Returns:
+        AsyncMultiClient instance
+        
+    Raises:
+        Exception: If initialization fails after all retries
+    """
+    config_path = os.getenv('GRAMMARED_LANGUAGE__MODEL_CONFIG_PATH', 'model_config.yaml')
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Initializing clients (attempt {attempt}/{max_retries})...")
+            clients = create_clients_from_config(config_path=config_path)
+            logger.info(f"Successfully loaded {len(clients)} client(s)")
+            
+            multi_client = AsyncMultiClient(clients=clients)
+            logger.info("Client initialization successful")
+            
+            # Warm-up prediction to ensure models are loaded
+            logger.info("Running warm-up prediction...")
+            warmup_text = "these is test sentence for warm up model."
+            multi_client.predict_with_merge(warmup_text)
+            logger.info("Warm-up prediction completed")
+            
+            return multi_client
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize clients (attempt {attempt}/{max_retries}): {str(e)}", exc_info=True)
+            
+            if attempt < max_retries:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logger.critical("All client initialization attempts failed")
+                raise
+
+def reload_clients_periodically(reload_interval: int = 3600):
+    """
+    Periodically reload clients in a background thread.
+    
+    Args:
+        reload_interval: Interval in seconds between reloads (default: 3600 = 1 hour)
+    """
+    global correction_multi_client
+    
+    while True:
+        try:
+            time.sleep(reload_interval)
+            logger.info("Starting periodic client reload...")
+            
+            new_client = initialize_clients()
+            
+            with client_lock:
+                old_client = correction_multi_client
+                correction_multi_client = new_client
+                logger.info("Clients reloaded successfully")
+                
+                # Allow some time for in-flight requests to complete with old client
+                time.sleep(5)
+                del old_client
+                
+        except Exception as e:
+            logger.error(f"Failed to reload clients: {str(e)}", exc_info=True)
+            logger.info("Continuing with existing clients")
+
+# Model initialization - load from config file with retry
+correction_multi_client = initialize_clients()
+
+# Start background thread for periodic client reloading
+reload_interval = int(os.getenv('GRAMMARED_LANGUAGE__CLIENT_RELOAD_INTERVAL', '3600'))
+reload_thread = Thread(target=reload_clients_periodically, args=(reload_interval,), daemon=True)
+reload_thread.start()
+logger.info(f"Started client reload thread (interval: {reload_interval}s)")
 
 # # Initialize ERRANT Grammar Correction Extractor
 # errant_extractor = ErrantGrammarCorrectionExtractor(language='en', min_length=1)
@@ -205,7 +282,8 @@ class ProcessingServerServicer(ml_server_pb2_grpc.ProcessingServerServicer):
                     result = process_cache_store.get(text)
                 else:
                     # Predict using both models, merge and enrich, then cache
-                    result = correction_multi_client.predict_with_merge(text)
+                    with client_lock:
+                        result = correction_multi_client.predict_with_merge(text)
                     process_cache_store.add(text, result)
 
                 # Convert matches to ml_server format
@@ -252,7 +330,8 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
                 else:
                     match_tasks.append((i, analyzed_sentence))
 
-            task_results = correction_multi_client.predict_with_merge([s for _, s in match_tasks])
+            with client_lock:
+                task_results = correction_multi_client.predict_with_merge([s for _, s in match_tasks])
             for (idx, _), result in zip(match_tasks, task_results):
                 results[idx] = result
                 match_cache_store.add(request.sentences[idx], result)
@@ -296,7 +375,8 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
                 else:
                     match_tasks.append((i, analyzed_sentence))
 
-            task_results = correction_multi_client.predict_with_merge([s.text for _, s in match_tasks])
+            with client_lock:
+                task_results = correction_multi_client.predict_with_merge([s.text for _, s in match_tasks])
             for (idx, analyzed_sentence), result in zip(match_tasks, task_results):
                 results[idx] = result
                 match_anylized_cache_store.add(analyzed_sentence.text, result)

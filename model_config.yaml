@@ -6,7 +6,7 @@ gector_deberta_large:
         triton_port: 8001
         pretrained_model_name_or_path: "gotutiyan/gector-deberta-large-5k"
         triton_model_name: gector_deberta_large
-        device: gpu # cpu, cuda, or auto
+        device: cuda # cpu, cuda, or auto
 
 coedit_large:
     type: coedit
@@ -18,7 +18,7 @@ coedit_large:
         # pretrained_model_name_or_path: "rayliuca/coedit-large-onnx-quantized" # cpu only!
         triton_model_name: coedit_large
         backend: ort
-        device: gpu # cpu, cuda, or auto
+        device: cuda # cpu, cuda, or auto
     model_init_config:
         batch_size: 8
     model_inference_config:
