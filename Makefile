@@ -1,6 +1,6 @@
 # Makefile for common development tasks using uv
 
-.PHONY: help install install-dev test test-api test-clients test-classifier test-triton test-utils test-non-hermetic test-coverage lint format clean docker-build docker-up docker-down grammared-language-api grammared-language-api-gpu grammared-language-triton grammared-language-triton-gpu docker-build-all
+.PHONY: help install install-dev test test-api test-clients test-classifier test-triton test-utils test-non-hermetic test-coverage lint format clean docker-build docker-up docker-down docker-buildx-setup docker-buildx-clean grammared-language-api grammared-language-api-gpu grammared-language-triton grammared-language-triton-arm grammared-language-api-push grammared-language-api-gpu-push grammared-language-triton-push grammared-language-triton-arm-push docker-build-all docker-push-all
 
 help:
 	@echo "Available commands:"
@@ -20,11 +20,18 @@ help:
 	@echo "  make docker-build                  - Build Docker images"
 	@echo "  make docker-up                     - Start Docker services"
 	@echo "  make docker-down                   - Stop Docker services"
-	@echo "  make grammared-language-api        - Build API Docker image"
-	@echo "  make grammared-language-api-gpu    - Build API GPU Docker image"
-	@echo "  make grammared-language-triton     - Build Triton Docker image"
-	@echo "  make grammared-language-triton-gpu - Build Triton GPU Docker image"
-	@echo "  make docker-build-all              - Build all Docker images"
+	@echo "  make docker-buildx-setup           - Setup buildx for multi-platform builds"
+	@echo "  make docker-buildx-clean           - Clean up buildx builder and caches"
+	@echo "  make grammared-language-api        - Build API Docker image (amd64+arm64, local)"
+	@echo "  make grammared-language-api-gpu    - Build API GPU Docker image (amd64 only, local)"
+	@echo "  make grammared-language-triton     - Build Triton Docker image (amd64 only, local)"
+	@echo "  make grammared-language-triton-arm - Build Triton Docker image (arm64 only, local)"
+	@echo "  make grammared-language-api-push   - Build and push API Docker image (amd64+arm64)"
+	@echo "  make grammared-language-api-gpu-push - Build and push API GPU Docker image (amd64 only)"
+	@echo "  make grammared-language-triton-push  - Build and push Triton Docker image (amd64 only)"
+	@echo "  make grammared-language-triton-arm-push - Build and push Triton Docker image (arm64 only)"
+	@echo "  make docker-build-all              - Build all Docker images (local)"
+	@echo "  make docker-push-all               - Build and push all Docker images"
 
 install:
 	uv sync
@@ -92,19 +99,136 @@ docker-logs:
 docker-restart:
 	docker-compose restart
 
+# Docker buildx cleanup
+docker-buildx-clean:
+	@echo "Removing multiarch builder..."
+	@docker buildx rm multiarch 2>/dev/null || true
+	@echo "Cleaning build caches..."
+	@rm -rf build/buildx-cache-amd64 build/buildx-cache-arm64
+	@echo "Buildx cleanup complete"
+
 # Docker image build targets
 GRRAMMARED_LANGUAGE_VERSION := $(shell grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+DOCKER_HUB_USERNAME ?= rayliuca
 
-grammared-language-api:
-	docker build -t grammared-language-api:$(GRRAMMARED_LANGUAGE_VERSION) -t grammared-language-api:latest -f docker/api/Dockerfile .
+# Cache directories for different architectures
+BUILDX_CACHE_AMD64 := build/buildx-cache-amd64
+BUILDX_CACHE_ARM64 := build/buildx-cache-arm64
 
-grammared-language-api-gpu:
-	docker build -t grammared-language-api-gpu:$(GRRAMMARED_LANGUAGE_VERSION) -t grammared-language-api-gpu:latest -f docker/api/Dockerfile-gpu .
+# Only import local cache if it exists to avoid warnings
+CACHE_FROM_AMD64 := $(if $(wildcard $(BUILDX_CACHE_AMD64)/index.json),--cache-from=type=local$(comma)src=$(BUILDX_CACHE_AMD64),)
+CACHE_FROM_ARM64 := $(if $(wildcard $(BUILDX_CACHE_ARM64)/index.json),--cache-from=type=local$(comma)src=$(BUILDX_CACHE_ARM64),)
 
-grammared-language-triton:
-	docker build -t grammared-language-triton:$(GRRAMMARED_LANGUAGE_VERSION) -t grammared-language-triton:latest -f docker/triton/Dockerfile .
+# Local cache flags (overridable per target)
+LOCAL_CACHE_FROM_AMD64 := $(CACHE_FROM_AMD64)
+LOCAL_CACHE_FROM_ARM64 := $(CACHE_FROM_ARM64)
+LOCAL_CACHE_TO_AMD64 := --cache-to=type=local,dest=$(BUILDX_CACHE_AMD64),mode=max
+LOCAL_CACHE_TO_ARM64 := --cache-to=type=local,dest=$(BUILDX_CACHE_ARM64),mode=max
 
-docker-build-all: grammared-language-api grammared-language-api-gpu grammared-language-triton
+# Comma variable for function arguments
+comma := ,
+
+# Setup buildx for multi-platform builds
+docker-buildx-setup:
+	@echo "Setting up QEMU for multi-architecture support..."
+	@docker run --rm --privileged multiarch/qemu-user-static --reset -p yes > /dev/null 2>&1 || true
+	@mkdir -p $(BUILDX_CACHE_AMD64) $(BUILDX_CACHE_ARM64)
+	@echo "Creating or updating buildx builder 'multiarch'..."
+	@docker buildx create --name multiarch --driver docker-container --use 2>/dev/null || docker buildx use multiarch
+	@docker buildx inspect --bootstrap
+	@echo "Verifying ARM64 platform support..."
+	@docker buildx inspect | grep -q "linux/arm64" || (echo "ERROR: ARM64 platform not supported by builder" && exit 1)
+
+# Internal build function - accepts PUSH_FLAG and IMAGE_PREFIX
+define docker_build_api
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		-t $(1)grammared-language-api:$(GRRAMMARED_LANGUAGE_VERSION) \
+		-t $(1)grammared-language-api:latest \
+		-f docker/api/Dockerfile . \
+		--cache-from=type=registry,ref=$(1)grammared-language-api:buildcache \
+		$(LOCAL_CACHE_FROM_AMD64) \
+		$(LOCAL_CACHE_FROM_ARM64) \
+		--cache-to=type=inline \
+		$(LOCAL_CACHE_TO_AMD64) \
+		$(LOCAL_CACHE_TO_ARM64) \
+		$(2)
+endef
+
+define docker_build_api_gpu
+	docker buildx build --platform linux/amd64 \
+		-t $(1)grammared-language-api-gpu:$(GRRAMMARED_LANGUAGE_VERSION) \
+		-t $(1)grammared-language-api-gpu:latest \
+		-f docker/api/Dockerfile-gpu . \
+		--cache-from=type=registry,ref=$(1)grammared-language-api-gpu:buildcache \
+		$(LOCAL_CACHE_FROM_AMD64) \
+		--cache-to=type=inline \
+		$(LOCAL_CACHE_TO_AMD64) \
+		$(2)
+endef
+
+define docker_build_triton
+	docker buildx build --platform linux/amd64 \
+		-t $(1)grammared-language-triton:$(GRRAMMARED_LANGUAGE_VERSION) \
+		-t $(1)grammared-language-triton:latest \
+		-f docker/triton/Dockerfile . \
+		--cache-from=type=registry,ref=$(1)grammared-language-triton:buildcache \
+		$(LOCAL_CACHE_FROM_AMD64) \
+		--cache-to=type=inline \
+		$(LOCAL_CACHE_TO_AMD64) \
+		$(2)
+endef
+
+define docker_build_triton_arm
+	docker buildx build --platform linux/arm64 \
+		-t $(1)grammared-language-triton-arm:$(GRRAMMARED_LANGUAGE_VERSION) \
+		-t $(1)grammared-language-triton-arm:latest \
+		-f docker/triton/Dockerfile-arm . \
+		--cache-from=type=registry,ref=$(1)grammared-language-triton-arm:buildcache \
+		$(LOCAL_CACHE_FROM_ARM64) \
+		--cache-to=type=inline \
+		$(LOCAL_CACHE_TO_ARM64) \
+		$(2)
+endef
+
+# Build targets (local, multi-arch where applicable)
+grammared-language-api: docker-buildx-setup
+	$(call docker_build_api,,--load)
+
+grammared-language-api-gpu: docker-buildx-setup
+	$(call docker_build_api_gpu,,--load)
+
+grammared-language-triton: docker-buildx-setup
+	$(call docker_build_triton,,--load)
+
+grammared-language-triton-arm: docker-buildx-setup
+	$(call docker_build_triton_arm,,--load)
+
+# Push targets (calls build with --push and registry cache)
+grammared-language-api-push: LOCAL_CACHE_FROM_AMD64=
+grammared-language-api-push: LOCAL_CACHE_FROM_ARM64=
+grammared-language-api-push: LOCAL_CACHE_TO_AMD64=
+grammared-language-api-push: LOCAL_CACHE_TO_ARM64=
+grammared-language-api-push: docker-buildx-setup
+	$(call docker_build_api,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-api:buildcache$(comma)mode=max)
+
+grammared-language-api-gpu-push: LOCAL_CACHE_FROM_AMD64=
+grammared-language-api-gpu-push: LOCAL_CACHE_TO_AMD64=
+grammared-language-api-gpu-push: docker-buildx-setup
+	$(call docker_build_api_gpu,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-api-gpu:buildcache$(comma)mode=max)
+
+grammared-language-triton-push: LOCAL_CACHE_FROM_AMD64=
+grammared-language-triton-push: LOCAL_CACHE_TO_AMD64=
+grammared-language-triton-push: docker-buildx-setup
+	$(call docker_build_triton,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-triton:buildcache$(comma)mode=max)
+
+grammared-language-triton-arm-push: LOCAL_CACHE_FROM_ARM64=
+grammared-language-triton-arm-push: LOCAL_CACHE_TO_ARM64=
+grammared-language-triton-arm-push: docker-buildx-setup
+	$(call docker_build_triton_arm,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-triton-arm:buildcache$(comma)mode=max)
+
+docker-build-all: grammared-language-api grammared-language-api-gpu grammared-language-triton grammared-language-triton-arm
+
+docker-push-all: grammared-language-api-push grammared-language-api-gpu-push grammared-language-triton-push grammared-language-triton-arm-push
 
 constraints-client:
 # 	uv export -o constraints/constraints-base.txt

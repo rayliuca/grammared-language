@@ -52,7 +52,18 @@ triton = [
   "transformers[torch]==4.57.6",
   "optimum[onnxruntime-gpu]",
   "bitsandbytes",
-  "accelerate",]
+  "accelerate",
+]
+
+# cpu only, onnxruntime-gpu not supported on arm
+triton-arm = [
+  "transformers[torch]==4.57.6",
+  "optimum[onnxruntime]",
+  "bitsandbytes",
+  "accelerate",
+  "torch==2.10.0+cpu"
+]
+
 
 dev = [
   "pytest>=7.0.0",

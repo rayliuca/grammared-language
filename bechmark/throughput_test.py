@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 DATASET_NAME = "jhu-clsp/jfleg"
 SPLIT = "test"
 LANGUAGETOOL_SERVER = "http://localhost:8081/v2/check"  # Change if needed
+LANGUAGETOOL_SERVER = "https://grammared-language-demo.rayliu.ca/v2/check"  # Change if needed
+
 TEXT_FIELD = "sentence"
 CONCURRENT_WORKERS = 4  # Tune for your machine/network/server capacity
 MAX_SAMPLES = 100  # Set to an integer to limit number of samples
@@ -91,17 +93,23 @@ Throughput: 3.06 samples/sec
 
 grammarly/coedit-large + gotutiyan/gector-deberta-large-5k
 
-GPU:
+5090 GPU:
 CONCURRENT_WORKERS = 8
 === Benchmark Results ===
 Processed 100 samples successfully, 0 failures.
 Total time: 20.80 seconds
 Throughput: 4.81 samples/sec
 
-CPU:
+9900x CPU:
 CONCURRENT_WORKERS = 8
 === Benchmark Results ===
 Processed 100 samples successfully, 0 failures.
 Total time: 228.75 seconds
 Throughput: 0.44 samples/sec
+
+Orcal ARM CPU (demo server):
+=== Benchmark Results ===
+Processed 100 samples successfully, 0 failures.
+Total time: 197.29 seconds
+Throughput: 0.51 samples/sec
 """

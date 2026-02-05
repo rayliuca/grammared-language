@@ -4,10 +4,7 @@
 services:
   # Triton Inference Server
   triton-server:
-    build:
-      context: .
-      dockerfile: docker/triton/Dockerfile
-    image: grammared-language-triton:latest
+    image: rayliuca/grammared-language-triton-arm:latest
     container_name: grammared-triton
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
@@ -24,13 +21,6 @@ services:
       - hf-cache:/cache  # HuggingFace model cache
       # - ./model_config.yaml:/model_config.yaml:ro  # Model configuration
     # shm_size: '1gb'
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
       interval: 10s
@@ -43,10 +33,7 @@ services:
 
   # API Service
   api-service:
-    build:
-      context: .
-      dockerfile: docker/api/Dockerfile
-    image: grammared-language-api:latest
+    image: rayliuca/grammared-language-api:latest
     container_name: grammared-api
     ports:
       - "50051:50051"
@@ -55,6 +42,7 @@ services:
       - ./logs:/app/logs
       - ./data:/data
       - hf-cache:/cache  # HuggingFace model cache
+      - ./docker/default_model_config.yaml:/model_config.yaml:ro
     environment:
       # - GRRAMMARED_LANGUAGE__API_PORT=50051
       - LOG_LEVEL=INFO
@@ -74,54 +62,47 @@ services:
       - grammared-network
     restart: unless-stopped
   languagetool:
-    image: meyay/languagetool:latest
+    image: erikvl87/languagetool:latest
     container_name: languagetool
     restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp:exec
-    cap_drop:
-      - ALL
-    cap_add:
-      - CAP_CHOWN
-      - CAP_DAC_OVERRIDE
-      - CAP_SETUID
-      - CAP_SETGID
-    security_opt:
-      - no-new-privileges
     ports:
-      - 8081:8081
+      - 8081:8010
     environment:
       download_ngrams_for_langs: en
-      MAP_UID: 1000
-      MAP_GID: 1000
-      langtool_remoteRulesFile: /remote-rule-config.json      
+      MAP_UID: 1001
+      MAP_GID: 1001
+      langtool_remoteRulesFile: /remote-rule-config.json
+      Java_Xms: 512m
+      Java_Xmx: 2g
     volumes:
+      # mkdir -p ./ngrams && wget -O ./ngrams/ngrams-en-20150817.zip https://languagetool.org/download/ngram-data/ngrams-en-20150817.zip && unzip ./ngrams/ngrams-en-20150817.zip -d ./ngrams && rm ./ngrams/ngrams-en-20150817.zip
       - ./ngrams:/ngrams:ro
-      - fasttext:/fasttext
       - ./example_language_tool_configs/remote-rule-config.json:/remote-rule-config.json:ro
     networks:
       - grammared-network
-      - cloudflared
-
+      - grammared-cloudflared
+    depends_on:
+      triton-server:
+        condition: service_healthy
+      api-service:
+        condition: service_healthy
   cloudflared:
     image: cloudflare/cloudflared
-    container_name: cloudflared
+    container_name: grammared_language_cloudflared
     environment:
-      - TZ=Europe/Amsterdam # Change this to your timezone
-      - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+      - TZ=America/Edmonton # Change this to your timezone
+      - TUNNEL_TOKEN=${GRAMMARED_LANGUAGE__CLOUDFLARED_TUNNEL_TOKEN}
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate run --token ${GRAMMARED_LANGUAGE__CLOUDFLARED_TUNNEL_TOKEN}
     networks:
-      - cloudflared
-
+      - grammared-cloudflared
+    depends_on:
+      - languagetool
 networks:
   grammared-network:
-  cloudflared:
-    name: cloudflared
+  grammared-cloudflared:
+    name: grammared-cloudflared
 # Volumes for persistent data
 volumes:
   hf-cache:
-    driver: local
-  fasttext:
     driver: local
