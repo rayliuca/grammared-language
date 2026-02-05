@@ -35,71 +35,45 @@ Demo server: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-la
 ### Model Config
 
 #### Config File
-<instructions on how to config via config file>
+
+See `model_config.yaml` or `docker/default_model_config.yaml` as a template:
+
+```yaml
+gector_deberta_large:
+    type: gector
+    backend: triton
+    serving_config:
+        triton_host: triton-server
+        triton_port: 8001
+        pretrained_model_name_or_path: "gotutiyan/gector-deberta-large-5k"
+        triton_model_name: gector_deberta_large
+        device: cuda # cpu, cuda, or auto
+```
+
+
 
 
 #### Environment Variable
 
-<instructions on how to config via env var>
+Or you can also set via environment variables (see `demo-docker-compose.yml` for real-world examples):
 
+
+```
+# See the 'environment:' section in demo-docker-compose.yml for full model config via env vars
+# Example:
+GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__TYPE=gector
+GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__BACKEND=triton
+GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__SERVING_CONFIG__TRITON_HOST=triton-server
+...
+```
+
+
+For more, see the comments in `grammared_language/utils/config_parser.py`.
 
 ### LanguageTool
 
 
 To enable remote servers with LanguageTool we will need a remote rule config file, which could be enabled via the `remoteRulesFile` option in the `server.properties` file
-
-
-# Grammared Language
-
-Add Grammarly (and other) open source models to LanguageTool.
-
----
----
-
-
-![Demo Screenshot](assets/simple-demo.png)
-
-Demo server: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-language-demo.rayliu.ca/v2)
-
-> **Warning:** Demo server is hosted on an Oracle ARM CPU server. It may be slow!
-
----
-
-
-## Quick Start
-
-1. **Clone and install:**
-    ```bash
-    git clone https://github.com/rayliuca/grammared_language.git
-    cd grammared_language
-    pip install -e .[api,triton]
-    ```
-    Or use Docker (see below).
-
-
-2. **Configure your models:**
-        - Edit `model_config.yaml` (or use `docker/default_model_config.yaml` as a template):
-            ```yaml
-            gector_deberta_large:
-                        type: gector
-                        backend: triton
-                        serving_config:
-                                 triton_host: triton-server
-                                 triton_port: 8001
-                                 pretrained_model_name_or_path: "gotutiyan/gector-deberta-large-5k"
-                                 triton_model_name: gector_deberta_large
-                                 device: cuda # cpu, cuda, or auto
-            ```
-        - Or set environment variables (see `demo-docker-compose.yml` for real-world examples):
-            ```
-            # See the 'environment:' section in demo-docker-compose.yml for full model config via env vars
-            # Example:
-            GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__TYPE=gector
-            GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__BACKEND=triton
-            GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__SERVING_CONFIG__TRITON_HOST=triton-server
-            ...
-            ```
-        - For more, see the comments in `grammared_language/utils/config_parser.py`.
 
 ---
 
@@ -147,7 +121,7 @@ java -cp languagetool-server.jar org.languagetool.server.HTTPServer --config ser
 
 #### With Dockerized LanguageTool
 
-If you're using the `meyay/languagetool` Docker image, set:
+If you're using the `meyay/languagetool` or `erikvl87/languagetool` Docker images, set:
 
 ```
 langtool_remoteRulesFile=<remote file config path in docker>
@@ -157,7 +131,6 @@ See `docker-compose.yml` for a full example.
 
 ## Troubleshooting
 
-- See `tests/README.md` for test and troubleshooting tips
 - For model loading or inference errors, check Triton and API logs
 - For LanguageTool integration, make sure your remote rule config is correct and accessible
 
