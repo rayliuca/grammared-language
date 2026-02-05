@@ -49,6 +49,7 @@ docker = [
 ]
 
 triton = [
+  "torch",
   "transformers[torch]==4.57.6",
   "optimum[onnxruntime-gpu]",
   "bitsandbytes",
@@ -64,7 +65,6 @@ triton-arm = [
   "torch==2.10.0+cpu"
 ]
 
-
 dev = [
   "pytest>=7.0.0",
   "pytest-asyncio>=0.21.0",
@@ -76,12 +76,14 @@ dev = [
   "ruff>=0.1.0",
   "pre-commit>=3.0.0",
 ]
+
 test = [
   "pytest>=7.0.0",
   "pytest-asyncio>=0.21.0",
   "pytest-mock>=3.10.0",
   "requests>=2.28.0",
 ]
+
 all = [
   "grammared-language[triton,dev,test]"
 ]
@@ -123,3 +125,9 @@ profile = "black"
 
 [tool.uv.sources]
 gector = { git = "https://github.com/rayliuca/gector" }
+torch = { marker = "extra == 'triton-arm'", index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
