@@ -115,15 +115,15 @@ DOCKER_HUB_USERNAME ?= rayliuca
 BUILDX_CACHE_AMD64 := build/buildx-cache-amd64
 BUILDX_CACHE_ARM64 := build/buildx-cache-arm64
 
-# Only import local cache if it exists to avoid warnings
-CACHE_FROM_AMD64 := $(if $(wildcard $(BUILDX_CACHE_AMD64)/index.json),--cache-from=type=local$(comma)src=$(BUILDX_CACHE_AMD64),)
-CACHE_FROM_ARM64 := $(if $(wildcard $(BUILDX_CACHE_ARM64)/index.json),--cache-from=type=local$(comma)src=$(BUILDX_CACHE_ARM64),)
+# Only import local cache if it exists to avoid warnings (runtime check with deferred assignment)
+CACHE_FROM_AMD64 = $(if $(wildcard $(BUILDX_CACHE_AMD64)/index.json),--cache-from=type=local$(comma)src=$(BUILDX_CACHE_AMD64),)
+CACHE_FROM_ARM64 = $(if $(wildcard $(BUILDX_CACHE_ARM64)/index.json),--cache-from=type=local$(comma)src=$(BUILDX_CACHE_ARM64),)
 
 # Local cache flags (overridable per target)
-LOCAL_CACHE_FROM_AMD64 := $(CACHE_FROM_AMD64)
-LOCAL_CACHE_FROM_ARM64 := $(CACHE_FROM_ARM64)
-LOCAL_CACHE_TO_AMD64 := --cache-to=type=local,dest=$(BUILDX_CACHE_AMD64),mode=max
-LOCAL_CACHE_TO_ARM64 := --cache-to=type=local,dest=$(BUILDX_CACHE_ARM64),mode=max
+LOCAL_CACHE_FROM_AMD64 = $(CACHE_FROM_AMD64)
+LOCAL_CACHE_FROM_ARM64 = $(CACHE_FROM_ARM64)
+LOCAL_CACHE_TO_AMD64 = --cache-to=type=local,dest=$(BUILDX_CACHE_AMD64),mode=max
+LOCAL_CACHE_TO_ARM64 = --cache-to=type=local,dest=$(BUILDX_CACHE_ARM64),mode=max
 
 # Comma variable for function arguments
 comma := ,
@@ -204,25 +204,15 @@ grammared-language-triton-arm: docker-buildx-setup
 	$(call docker_build_triton_arm,,--load)
 
 # Push targets (calls build with --push and registry cache)
-grammared-language-api-push: LOCAL_CACHE_FROM_AMD64=
-grammared-language-api-push: LOCAL_CACHE_FROM_ARM64=
-grammared-language-api-push: LOCAL_CACHE_TO_AMD64=
-grammared-language-api-push: LOCAL_CACHE_TO_ARM64=
 grammared-language-api-push: docker-buildx-setup
 	$(call docker_build_api,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-api:buildcache$(comma)mode=max)
 
-grammared-language-api-gpu-push: LOCAL_CACHE_FROM_AMD64=
-grammared-language-api-gpu-push: LOCAL_CACHE_TO_AMD64=
 grammared-language-api-gpu-push: docker-buildx-setup
 	$(call docker_build_api_gpu,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-api-gpu:buildcache$(comma)mode=max)
 
-grammared-language-triton-push: LOCAL_CACHE_FROM_AMD64=
-grammared-language-triton-push: LOCAL_CACHE_TO_AMD64=
 grammared-language-triton-push: docker-buildx-setup
 	$(call docker_build_triton,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-triton:buildcache$(comma)mode=max)
 
-grammared-language-triton-arm-push: LOCAL_CACHE_FROM_ARM64=
-grammared-language-triton-arm-push: LOCAL_CACHE_TO_ARM64=
 grammared-language-triton-arm-push: docker-buildx-setup
 	$(call docker_build_triton_arm,$(DOCKER_HUB_USERNAME)/,--push --cache-to=type=registry$(comma)ref=$(DOCKER_HUB_USERNAME)/grammared-language-triton-arm:buildcache$(comma)mode=max)
 

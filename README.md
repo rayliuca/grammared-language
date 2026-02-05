@@ -2,8 +2,19 @@
 
 Adding Grammarly (and other) open source models to LanguageTool
 
-## Overview
+## Demo
 
+
+![Demo Screenshot](assets/simple-demo.png)
+
+
+Demo server: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-language-demo.rayliu.ca/v2)
+
+
+> **Warning:** Demo server is hosted on an Oracle ARM CPU server. It may be slow!
+
+
+## Overview
 
 
 ## Limitations
