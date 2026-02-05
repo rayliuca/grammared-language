@@ -311,14 +311,23 @@ def get_config(config_path:str=MODEL_CONFIG_PATH, use_env: bool=True, backup_con
     env_vars = {k: v for k, v in os.environ.items() if k.startswith("GRAMMARED_LANGUAGE__")}
     # Determine which config path to use
     if os.path.isfile(config_path):
-        logger.info(f"Loading model configuration from file: {config_path}")
-        config = load_config_from_file(config_path)
-    elif env_vars and use_env:
-        logger.info(f"Loading model configuration from environment variables")
-        config = load_config_from_env()
-    else:
-        logger.info(f"No config path provided. Loading model configuration from backup file: {backup_config_path}")
-        config = load_config_from_file(backup_config_path)
+        try:
+            logger.info(f"Loading model configuration from file: {config_path}")
+            config = load_config_from_file(config_path)
+            return config
+        except Exception as e:
+            logger.warning(f"Failed to load config from file {config_path}: {e}")
+
+    if env_vars and use_env:
+        try:
+            logger.info(f"Loading model configuration from environment variables")
+            config = load_config_from_env()
+            return config
+        except Exception as e:
+            logger.warning(f"Failed to load config from environment variables: {e}")
+
+    logger.info(f"No config path provided. Loading model configuration from backup file: {backup_config_path}")
+    config = load_config_from_file(backup_config_path)
     return config
 
 
