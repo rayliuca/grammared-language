@@ -524,15 +524,19 @@ wheels = [
 ]
 
 [[package]]
-name = "gector"
-version = "1.2.0"
-source = { git = "https://github.com/rayliuca/gector#3cfc27dcacfe6ac9ec137fba67dcd777736a96d7" }
+name = "gector-triton"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "accelerate" },
     { name = "huggingface-hub" },
     { name = "python-levenshtein" },
     { name = "torch" },
     { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/54/99/7febd9ff97949fcbd0bf502d1e7f504e09a7aa4ed7233b2fd988910d4c45/gector_triton-1.2.1.tar.gz", hash = "sha256:477cb1f7acb3a990b0212c54c8f3e7f78fce172aad40765cf3d1bc857f4299e8", size = 28483, upload-time = "2026-02-06T05:01:54.417Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/e3/818762513cf3bbb07f68940a2e157abf7d1506f857f8615db82a7e4a6b40/gector_triton-1.2.1-py3-none-any.whl", hash = "sha256:cc4453924fe087ae894354b1c3e90251e29f992c39c9ffef9f04679973f037e5", size = 26270, upload-time = "2026-02-06T05:01:52.804Z" },
 ]
 
 [[package]]
@@ -542,7 +546,7 @@ source = { editable = "." }
 dependencies = [
     { name = "errant" },
     { name = "fastapi" },
-    { name = "gector" },
+    { name = "gector-triton" },
     { name = "grpcio" },
     { name = "grpcio-tools" },
     { name = "jinja2" },
@@ -589,7 +593,7 @@ dev = [
 docker = [
     { name = "errant" },
     { name = "fastapi" },
-    { name = "gector" },
+    { name = "gector-triton" },
     { name = "grpcio" },
     { name = "grpcio-tools" },
     { name = "jinja2" },
@@ -633,8 +637,8 @@ requires-dist = [
     { name = "errant", marker = "extra == 'docker'", specifier = "==3.0.0" },
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "fastapi", marker = "extra == 'docker'", specifier = "==0.128.0" },
-    { name = "gector", git = "https://github.com/rayliuca/gector" },
-    { name = "gector", marker = "extra == 'docker'", git = "https://github.com/rayliuca/gector" },
+    { name = "gector-triton" },
+    { name = "gector-triton", marker = "extra == 'docker'" },
     { name = "grammared-language", extras = ["triton", "dev", "test"], marker = "extra == 'all'" },
     { name = "grpcio" },
     { name = "grpcio", marker = "extra == 'docker'", specifier = "==1.67.1" },
