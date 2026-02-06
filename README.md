@@ -1,52 +1,53 @@
-# Grammared Language
 
-Adding Grammarly (and other) open source models to LanguageTool
 
-## Demo
+# Grammared Language 🚀
 
+<p align="center">
+    <b>If you find this project useful, please give it a ⭐ &mdash; and contributions are always welcome! 🤗</b><br>
+</p>
+
+**✨ Adding Grammarly (and other) open source models to LanguageTool ✨**
+
+
+## Demo 🎬
 
 ![Demo Screenshot](assets/simple-demo.png)
 
+Try it live: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-language-demo.rayliu.ca/v2) 🌐
 
-Demo server: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-language-demo.rayliu.ca/v2)
-
-
-> **Warning:** Demo server is hosted on an Oracle ARM CPU server. It may be slow!
+> ⚠️ **Heads up:** Demo server is running on an Oracle ARM CPU server. It might be a bit slow—patience is a virtue! 🐢
 
 
-## Overview
 
-LanguageTool is a popular open-source grammar and spell-checking tool that primarily utilizes deterministic rules, with the option to use n-grams. 
-One common request is to add support for more intelligent, self-hosted, and AI/ ML-based models. 
+## Overview 📝
 
-While not documented, LanguageTool does support remote correction servers via gRPC, called [GRPCRule](https://github.com/languagetool-org/languagetool/blob/1d1608b353120b325495f7ba804e322f747d92e7/languagetool-core/src/main/java/org/languagetool/rules/GRPCRule.java),
-configured by the [remoteRulesFile](https://github.com/languagetool-org/languagetool/blob/1d1608b353120b325495f7ba804e322f747d92e7/languagetool-commandline/src/main/java/org/languagetool/commandline/CommandLineOptions.java#L309C12-L309C27)
-config in server.properties, which can be used to connect to custom model servers.
+LanguageTool is a fantastic open-source grammar and spell-checking tool that mostly uses deterministic rules (with a sprinkle of n-grams).
 
-This project implements such a remote server, which connects LanguageTool to various open-source grammatical error correction models, 
-mainly Grammarly's GECToR and CoEdIT models, due to their strong performance, open-source availability, and inference speed.
+One of the most common requests is to add support for smarter, self-hosted, AI/ML-based models. While not documented, LanguageTool *does* support remote correction servers via gRPC (see [GRPCRule](https://github.com/languagetool-org/languagetool/blob/1d1608b353120b325495f7ba804e322f747d92e7/languagetool-core/src/main/java/org/languagetool/rules/GRPCRule.java)), configured by the [remoteRulesFile](https://github.com/languagetool-org/languagetool/blob/1d1608b353120b325495f7ba804e322f747d92e7/languagetool-commandline/src/main/java/org/languagetool/commandline/CommandLineOptions.java#L309C12-L309C27) option in the `server.properties` config file.
+
+This project is that missing remote server! It connects LanguageTool to open-source grammatical error correction models—mainly Grammarly's GECToR and CoEdIT—because they're fast, open, and get the job done. 💪
 
 
-## Limitations
-- The correction will always show up as grammar corrections
-    - LanguageTool does not use the correction categories supplied by the remote servers
-- No paraphrasing support
-    - LanguageTool clients request to a hard coded rewrite server url
+
+## Limitations ⚠️
+- All corrections show up as "grammar" corrections (LanguageTool doesn't use the categories from remote servers)
+- No paraphrasing support (LanguageTool clients use a hardcoded rewrite server URL)
 
 
-## Supported Models
+
+## Supported Models 🧠
 - `GECToR` models from [gotutiyan/gector](https://github.com/gotutiyan/gector)
-- `text2text-generation` models
-    - for example, Grammarly's [CoEdIT](https://huggingface.co/collections/grammarly/coedit) models
+- `text2text-generation` models (e.g., Grammarly's [CoEdIT](https://huggingface.co/collections/grammarly/coedit))
 
 
-## Quick Start
+
+## Quick Start ⚡
 
 ### Model Config
 
 #### Config File
 
-See `model_config.yaml` or `docker/default_model_config.yaml` as a template:
+Check out `model_config.yaml` or `docker/default_model_config.yaml` for a template:
 
 ```yaml
 gector_deberta_large:
@@ -63,9 +64,10 @@ gector_deberta_large:
 
 
 
+
 #### Environment Variable
 
-Or you can also set via environment variables (see `demo-docker-compose.yml` for real-world examples):
+Or set things up with environment variables (see `demo-docker-compose.yml` for real-world examples):
 
 
 ```
@@ -78,86 +80,99 @@ GRAMMARED_LANGUAGE__MODELS__GECTOR_DEBERTA_LARGE__SERVING_CONFIG__TRITON_HOST=tr
 ```
 
 
-For more, see the comments in `grammared_language/utils/config_parser.py`.
 
-### LanguageTool
+For more details, see the comments in `grammared_language/utils/config_parser.py`.
 
 
-To enable remote servers with LanguageTool we will need a remote rule config file, which could be enabled via the `remoteRulesFile` option in the `server.properties` file
+### LanguageTool Integration 🛠️
+
+To enable remote servers with LanguageTool, you'll need a remote rule config file. Point to it with the `remoteRulesFile` option in your `server.properties` file:
 
 ---
 
-## How config loading works
+
+## How config loading works 🧩
 
 When the service starts, it loads model configuration in this order:
 
-1. If a config file exists at `/model_config.yaml`, it loads that.
+1. If `/model_config.yaml` exists, it loads that.
 2. If not, and environment variables starting with `GRAMMARED_LANGUAGE__` are set, it loads config from those (see `demo-docker-compose.yml`).
 3. If neither is found, it falls back to `/default_model_config.yaml`.
 
-See the `get_config` function in `grammared_language/utils/config_parser.py` for details.
-
-3. **Start everything with Docker Compose:**
-    ```bash
-    docker-compose up --build
-    ```
-    This runs Triton, the API, and (optionally) LanguageTool with remote rules.
+See the `get_config` function in `grammared_language/utils/config_parser.py` for the nitty-gritty.
 
 ---
 
-## Requirements
+### 🚢 Start everything with Docker Compose:
+
+```bash
+docker-compose up --build
+```
+This runs Triton, the API, and (optionally) LanguageTool with remote rules. Easy!
+
+---
+
+
+## Requirements 📦
 
 - Python 3.11+
 - Docker (for containers)
 - [Triton Inference Server](https://github.com/triton-inference-server/server) (for model serving)
-- See `pyproject.toml` for details
+- See `pyproject.toml` for more
 
-## Usage
 
+## Usage 🏃
 
 ### LanguageTool Integration
 
-To use remote servers with LanguageTool, set up a remote rule config file (see `example_language_tool_configs/remote-rule-config.json`) and add this to your `server.properties`:
+To use remote servers with LanguageTool:
 
-```
-remoteRulesFile=./remote-rule-config.json
-```
+1. Set up a remote rule config file (see `example_language_tool_configs/remote-rule-config.json`).
+2. Add this to your `server.properties`:
 
-Then run:
+    ```
+    remoteRulesFile=./remote-rule-config.json
+    ```
 
-```
-java -cp languagetool-server.jar org.languagetool.server.HTTPServer --config server.properties
-```
+3. Run:
 
-#### With Dockerized LanguageTool
+    ```
+    java -cp languagetool-server.jar org.languagetool.server.HTTPServer --config server.properties
+    ```
+
+#### With Dockerized LanguageTool 🐳
 
 If you're using the `meyay/languagetool` or `erikvl87/languagetool` Docker images, set:
 
-```
-langtool_remoteRulesFile=<remote file config path in docker>
-```
+    ```
+    langtool_remoteRulesFile=<remote file config path in docker>
+    ```
 
 See `docker-compose.yml` for a full example.
 
-## Troubleshooting
 
-- For model loading or inference errors, check Triton and API logs
-- For LanguageTool integration, make sure your remote rule config is correct and accessible
+## Troubleshooting 🛠️
 
-## License
+- Model loading or inference errors? Check Triton and API logs.
+- LanguageTool not working? Double-check your remote rule config is correct and accessible.
+
+
+## License 📄
 
 See [LICENSE.md](LICENSE.md).
 
 ---
 
-## Vibe Coding Notice
 
-- One key learning objective of this project is to explore the use of various of vide coding models and tools
-  - which is probably why you would see the code quality to be quite patchy
+## Vibe Coding Notice 🎨
+
+- One key learning objective of this project is to explore the use of various vibe coding models and tools
+    - which is probably why you might see the code quality to be a bit patchy
 - Bugs and rough edges are expected, use at your own risk
 
 
-## Credits & References
+
+## Credits & References 🙏
 
 - [GECToR: Grammatical Error Correction: Tag, Not Rewrite](https://github.com/gotutiyan/gector)
 - [Grammarly CoEdIT models](https://huggingface.co/collections/grammarly/coedit)
