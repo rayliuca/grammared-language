@@ -1,3 +1,6 @@
+from pathlib import Path
+from urllib.request import urlopen
+
 from .base_client import BaseClient
 from grammared_language.language_tool.output_models import LanguageToolRemoteResult
 from grammared_language.utils.errant_grammar_correction_extractor import ErrantGrammarCorrectionExtractor
@@ -25,8 +28,17 @@ except ImportError:
     AutoTokenizer = None
     TRANSFORMERS_AVAILABLE = False
 
+OFFICIAL_VOCAB_URL = "https://github.com/grammarly/gector/raw/master/data/verb-form-vocab.txt"
 class GectorClient(BaseClient):
-    def __init__(self, pretrained_model_name_or_path: str, triton_model_name: str=None, triton_host: str='localhost', triton_port: int=8001, verb_dict_path: str='data/verb-form-vocab.txt', **kwargs):
+    def __init__(
+            self,
+            pretrained_model_name_or_path: str,
+            triton_model_name: str=None,
+            triton_host: str='localhost',
+            triton_port: int=8001,
+            verb_dict_path: str='data/verb-form-vocab.txt',
+            auto_download_official_vocab: bool=True,
+            **kwargs):
         if "rule_id" not in kwargs:
             kwargs["rule_id"] = triton_model_name or pretrained_model_name_or_path or "Gector"
         super().__init__(**kwargs)
@@ -49,6 +61,17 @@ class GectorClient(BaseClient):
             )
 
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path)
+        verb_dict_file = Path(verb_dict_path)
+        if auto_download_official_vocab and not verb_dict_file.is_file():
+            verb_dict_file.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                with urlopen(OFFICIAL_VOCAB_URL) as response:
+                    verb_dict_file.write_bytes(response.read())
+            except Exception as exc:
+                raise FileNotFoundError(
+                    f"Failed to download verb vocab from {OFFICIAL_VOCAB_URL} to {verb_dict_file}"
+                ) from exc
+
         self.encode, self.decode = load_verb_dict(verb_dict_path)
 
         self.pred_config = {
