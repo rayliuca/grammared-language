@@ -16,6 +16,16 @@ Demo server: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-la
 
 ## Overview
 
+LanguageTool is a popular open-source grammar and spell-checking tool that primarily utilizes deterministic rules, with the option to use n-grams. 
+One common request is to add support for more intelligent, self-hosted, and AI/ ML-based models. 
+
+While not documented, LanguageTool does support remote correction servers via gRPC, called [GRPCRule](https://github.com/languagetool-org/languagetool/blob/1d1608b353120b325495f7ba804e322f747d92e7/languagetool-core/src/main/java/org/languagetool/rules/GRPCRule.java),
+configured by the [remoteRulesFile](https://github.com/languagetool-org/languagetool/blob/1d1608b353120b325495f7ba804e322f747d92e7/languagetool-commandline/src/main/java/org/languagetool/commandline/CommandLineOptions.java#L309C12-L309C27)
+config in server.properties, which can be used to connect to custom model servers.
+
+This project implements such a remote server, which connects LanguageTool to various open-source grammatical error correction models, 
+mainly Grammarly's GECToR and CoEdIT models, due to their strong performance, open-source availability, and inference speed.
+
 
 ## Limitations
 - The correction will always show up as grammar corrections
@@ -140,9 +150,15 @@ See [LICENSE.md](LICENSE.md).
 
 ---
 
+## Vibe Coding Notice
+
+- One key learning objective of this project is to explore the use of various of vide coding models and tools
+  - which is probably why you would see the code quality to be quite patchy
+- Bugs and rough edges are expected, use at your own risk
+
+
 ## Credits & References
 
-- [Ray Liu](https://github.com/rayliuca) (author/maintainer)
 - [GECToR: Grammatical Error Correction: Tag, Not Rewrite](https://github.com/gotutiyan/gector)
 - [Grammarly CoEdIT models](https://huggingface.co/collections/grammarly/coedit)
 - [Triton Inference Server](https://github.com/triton-inference-server/server)
