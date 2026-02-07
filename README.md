@@ -156,9 +156,9 @@ To use remote servers with LanguageTool:
 
 If you're using the `meyay/languagetool` or `erikvl87/languagetool` Docker images, set:
 
-    ```
-    langtool_remoteRulesFile=<remote file config path in docker>
-    ```
+```
+langtool_remoteRulesFile=<remote file config path in docker>
+```
 
 See `docker-compose.yml` for a full example.
 
@@ -168,10 +168,6 @@ See `docker-compose.yml` for a full example.
 - Model loading or inference errors? Check Triton and API logs.
 - LanguageTool not working? Double-check your remote rule config is correct and accessible.
 
-
-## License 📄
-
-See [LICENSE.md](LICENSE.md).
 
 ---
 
@@ -190,3 +186,4 @@ See [LICENSE.md](LICENSE.md).
 - [Grammarly CoEdIT models](https://huggingface.co/collections/grammarly/coedit)
 - [Triton Inference Server](https://github.com/triton-inference-server/server)
 - [LanguageTool](https://languagetool.org/)
+
