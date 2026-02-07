@@ -7,18 +7,12 @@
 
 <p align="center">
     <picture>
-        <img alt="Grammared Language Featured Image" src="assets/typewriter_beaver.png" height="350" style="max-width: 100%;">
+        <img alt="Grammared Language Cover Image: building better sentences (a beaver using a typewriter with books around)" src="assets/typewriter_beaver.png" height="350" style="max-width: 100%;">
     </picture>
 </p>
 <h3 align="center">
     <p>✨ Adding Grammarly (and other) open source models to LanguageTool ✨</p>
 </h3>
-
-[//]: # (    <p align="center">)
-[//]: # (        <em> Building better sentences</em>)
-[//]: # (    </p>)
-
-
 
 
 ## Demo 🎬
@@ -186,4 +180,5 @@ See `docker-compose.yml` for a full example.
 - [Grammarly CoEdIT models](https://huggingface.co/collections/grammarly/coedit)
 - [Triton Inference Server](https://github.com/triton-inference-server/server)
 - [LanguageTool](https://languagetool.org/)
+
 
