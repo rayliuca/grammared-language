@@ -1,6 +1,6 @@
 [project]
 name = "grammared-language"
-version = "0.1.1"
+version = "0.1.2"
 description = "Grammar error correction backend with Triton and FastAPI/ GRPC integration"
 readme = "README.md"
 requires-python = ">=3.11"
