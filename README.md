@@ -7,7 +7,7 @@
 
 <p align="center">
     <picture>
-        <img alt="Grammared Language Featured Image" src="assets/typewriter _beaver.png" height="300" style="max-width: 100%;">
+        <img alt="Grammared Language Featured Image" src="assets/typewriter _beaver.png" height="500" style="max-width: 100%;">
     </picture>
 </p>
 <h3 align="center">
