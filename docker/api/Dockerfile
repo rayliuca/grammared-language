@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --break-system-packages uv
 ENV API_VENV=/python_api_env
 COPY docker/requirements/base.txt /tmp/base.txt
 RUN uv venv $API_VENV && uv pip install --python $API_VENV torch==2.10.0+cpu --index-url https://download.pytorch.org/whl/cpu && \
-    uv venv $API_VENV && uv pip install --python $API_VENV --requirement /tmp/base.txt && \
+    uv pip install --python $API_VENV --requirement /tmp/base.txt && \
     rm /tmp/base.txt
 
 # Copy only necessary files for package installation
@@ -49,18 +49,20 @@ ENV PYTHONPATH="$API_VENV/site-packages:$PYTHONPATH"
 # Download spaCy English model for errant
 RUN $API_VENV/bin/python -m spacy download en_core_web_sm
 
-# Change working directory to root to avoid import conflicts with /grammared_language
-WORKDIR /
-
 COPY docker/default_model_config.yaml /default_model_config.yaml
 # Copy application code
-COPY api/src/ src/
+COPY api/src/ /src/
 
 # Create non-root user for security
 RUN useradd -m -u 1000 apiuser && \
     chown -R apiuser:apiuser /src
 
 USER apiuser
+
+# Change working directory to root to avoid import conflicts with /grammared_language
+WORKDIR /src
+
+COPY data/verb-form-vocab.txt /src/data/verb-form-vocab.txt
 
 # Expose API port
 EXPOSE 50051 50052
@@ -73,5 +75,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # Placeholder command
-CMD ["/bin/bash", "-c", "$API_VENV/bin/python /src/grpc_server.py"]
+CMD ["/bin/bash", "-c", "$API_VENV/bin/python grpc_server.py"]
 

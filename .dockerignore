@@ -72,8 +72,8 @@ docs
 triton_server/model_repo
 triton_server/model_repository
 
-# Large files
-data/
+# # Large files
+# data/
 
 # Docker and CI files
 docker-compose.yml
