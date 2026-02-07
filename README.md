@@ -7,7 +7,9 @@
 
 <p align="center">
     <picture>
-        <img alt="Grammared Language Cover Image: building better sentences (a beaver using a typewriter with books around)" src="assets/typewriter_beaver.png" height="350" style="max-width: 100%;">
+        <source src="assets/typewriter_beaver.png">
+        # Fallback if relative path doesn't work (e.g., on PyPi):
+        <img alt="Grammared Language Cover Image: building better sentences (a beaver using a typewriter with books around)" src="https://raw.githubusercontent.com/rayliuca/grammared-language/refs/heads/main/assets/typewriter_beaver.png" style="max-width: 100%; height: auto; max-height:400px">
     </picture>
 </p>
 <h3 align="center">

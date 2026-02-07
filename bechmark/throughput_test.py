@@ -2,6 +2,7 @@ import time
 import requests
 from datasets import load_dataset
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm.auto import tqdm
 
 # Settings
 DATASET_NAME = "jhu-clsp/jfleg"
@@ -21,6 +22,7 @@ def check_with_languagetool(text):
     }
     response = requests.post(LANGUAGETOOL_SERVER, data=data)
     response.raise_for_status()
+    # print(response.json())
     return response.json()
 
 def main():
@@ -34,7 +36,7 @@ def main():
 
     successes, failures = 0, 0
     start_time = time.time()
-
+    pbar = tqdm(total=num_samples, desc="Processing samples")
     # Thread pool for concurrency
     with ThreadPoolExecutor(max_workers=CONCURRENT_WORKERS) as executor:
         # Start all requests
@@ -50,10 +52,14 @@ def main():
                 print(f"Error on sample {idx}: {repr(e)}")
                 failures += 1
             completed += 1
+            elapsed = time.time() - start_time
+            throughput = completed / elapsed
+            pbar.set_description(f"Success: {successes}, Fail: {failures}, {throughput:.2f} samples/sec")
+            pbar.update(1)
             if completed % 100 == 0 or completed == num_samples:
-                elapsed = time.time() - start_time
-                print(f"Processed {completed}/{num_samples} samples in {elapsed:.2f}s ({completed/elapsed:.2f} samples/sec)")
-
+                print(f"Processed {completed}/{num_samples} samples in {elapsed:.2f}s ({throughput:.2f} samples/sec)")
+    
+    pbar.close()
     total_time = time.time() - start_time
     print("\n=== Benchmark Results ===")
     print(f"Processed {successes} samples successfully, {failures} failures.")
