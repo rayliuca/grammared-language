@@ -1,12 +1,24 @@
+<p align="center">
+    <b>If you find this project useful, please give it a ⭐ &mdash; and contributions are always welcome! 🤗</b><br>
+</p>
 
 
 # Grammared Language 🚀
 
 <p align="center">
-    <b>If you find this project useful, please give it a ⭐ &mdash; and contributions are always welcome! 🤗</b><br>
+    <picture>
+        <img alt="Grammared Language Featured Image" src="assets/typewriter _beaver.png" height="300" style="max-width: 100%;">
+    </picture>
 </p>
+<h3 align="center">
+    <p>✨ Adding Grammarly (and other) open source models to LanguageTool ✨</p>
+</h3>
 
-**✨ Adding Grammarly (and other) open source models to LanguageTool ✨**
+[//]: # (    <p align="center">)
+[//]: # (        <em> Building better sentences</em>)
+[//]: # (    </p>)
+
+
 
 
 ## Demo 🎬
