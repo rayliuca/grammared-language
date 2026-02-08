@@ -38,7 +38,7 @@ Try it live: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-la
     <picture>
         <source media="(min-width: 0px)" srcset="assets/languagetool_client_setting.png">
         <img 
-            alt="Demo config instruction screenshot: Add the demo URL to the client settings -> Advanced settings -> Other server" 
+            alt="Demo config instruction screenshot: Add the demo URL to the client settings -&gt; Advanced settings -&gt; Other server"
             src="https://raw.githubusercontent.com/rayliuca/grammared-language/refs/heads/main/assets/languagetool_client_setting.png"
             style="width: 100%"
         >
