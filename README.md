@@ -7,7 +7,7 @@
 
 <p align="center">
     <picture>
-        <source src="assets/typewriter_beaver.png">
+        <source media="(min-width: 0px)" srcset="assets/typewriter_beaver.png">
         <img alt="Grammared Language Cover Image: building better sentences (a beaver using a typewriter with books around)" src="https://raw.githubusercontent.com/rayliuca/grammared-language/refs/heads/main/assets/typewriter_beaver.png" style="max-width: 100%; height: auto; max-height:400px">
     </picture>
 </p>
@@ -18,14 +18,33 @@
 
 ## Demo 🎬
 
-![Demo Screenshot](assets/simple-demo.png)
+<p align="center">
+    <picture>
+        <source media="(min-width: 0px)" srcset="assets/simple-demo.png">
+        <img 
+            alt="Demo Screenshot: Graammared Language can improve grammar error corrections such as their/ there" 
+            src="https://raw.githubusercontent.com/rayliuca/grammared-language/refs/heads/main/assets/simple-demo.png" 
+            style="width: 100%"
+        >
+    </picture>
+</p>
+
 
 Try it live: [https://grammared-language-demo.rayliu.ca/v2](https://grammared-language-demo.rayliu.ca/v2) 🌐
 
 > ⚠️ **Heads up:** Demo server is running on an Oracle ARM CPU server. It might be a bit slow—patience is a virtue! 🐢
 
-
-
+<p align="center">
+    <picture>
+        <source media="(min-width: 0px)" srcset="assets/languagetool_client_setting.png">
+        <img 
+            alt="Demo config instruction screenshot: Add the demo URL to the client settings -> Advanced settings -> Other server" 
+            src="https://raw.githubusercontent.com/rayliuca/grammared-language/refs/heads/main/assets/languagetool_client_setting.png"
+            style="width: 100%"
+        >
+    </picture>
+</p>
+            
 ## Overview 📝
 
 LanguageTool is a fantastic open-source grammar and spell-checking tool that mostly uses deterministic rules (with a sprinkle of n-grams).
