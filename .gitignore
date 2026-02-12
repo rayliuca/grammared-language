@@ -229,3 +229,4 @@ data/verb-form-vocab.txt
 /triton_server/archived_model_repo/
 model_repository/**
 test_model_repo/**
+ngrams/**

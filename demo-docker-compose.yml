@@ -133,6 +133,13 @@ services:
       - grammared-cloudflared
     depends_on:
       - languagetool
+  restarter:
+    image: docker:cli
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    # restart languagetool every 12 hours to prevent memory leaks
+    command: ["/bin/sh", "-c", "while true; do sleep 43200; docker restart languagetool; done"]
+    restart: unless-stopped
+
 networks:
   grammared-network:
   grammared-cloudflared:
