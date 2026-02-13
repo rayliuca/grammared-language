@@ -1,11 +1,15 @@
+[project.urls]
+"Homepage" = "https://github.com/rayliuca/grammared-language"
+
 [project]
 name = "grammared-language"
-version = "0.1.2"
+version = "0.1.3"
 description = "Grammar error correction backend with Triton and FastAPI/ GRPC integration"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE.md" }
 authors = [ { name = "Ray Liu", email = "ray@rayliu.ca" } ]
+keywords = ["nlp", "machine-learning", 'natural-language-processing', 'spellcheck', 'grammar', 'triton', 'languagetool', 'triton-inference-server', 'llm']
 
 # Core runtime dependencies (keep minimal; extras provide larger optional deps)
 dependencies = [
