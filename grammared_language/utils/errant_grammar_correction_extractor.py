@@ -76,7 +76,7 @@ class ErrantGrammarCorrectionExtractor:
         else:
             fixed_corrected = corrected
         
-        # Parse texts with ERRANT
+        # Parse texts w# ith ERRANT
         orig_parsed = self.annotator.parse(original)
         cor_parsed = self.annotator.parse(fixed_corrected)
         
@@ -85,7 +85,13 @@ class ErrantGrammarCorrectionExtractor:
         
         matches = []
         
+        num_tokens = len(orig_parsed)
         for edit in edits:
+            # heuristic to avoid over correction of bullet points 
+            # Skip sentence-start capital changes if entire text is less than 7 tokens
+            if (num_tokens < 7 and edit.o_start == 0 and edit.o_str.lower() == edit.c_str.lower()):
+                continue
+            
             # Convert token indices to character indices
             offset, length = self._token_span_to_char_span(
                 orig_parsed, edit.o_start, edit.o_end
