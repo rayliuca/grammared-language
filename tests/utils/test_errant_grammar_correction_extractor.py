@@ -272,3 +272,137 @@ class TestErrantGrammarCorrectionExtractor:
         # Both should work but may produce different results
         assert isinstance(matches_with_fix, list)
         assert isinstance(matches_without_fix, list)
+
+    @pytest.mark.parametrize("original,corrected,num_tokens,should_skip,description", [
+        # Short text (< 7 tokens) - should skip
+        ("item one here", "Item one here", 3, True, "3 tokens - skip capitalization"),
+        ("this is a short item list", "This is a short item list", 6, True, "6 tokens - skip capitalization"),
+        # Long text (>= 7 tokens) - should detect
+        ("this is a complete grammatical sentence here", "This is a complete grammatical sentence here", 8, False, "8 tokens - detect capitalization"),
+        ("this is a very long sentence with many words", "This is a very long sentence with many words", 10, False, "10 tokens - detect capitalization"),
+    ])
+    def test_heuristic_sentence_start_capitalization(self, original, corrected, num_tokens, should_skip, description):
+        """Test heuristic for sentence-start capitalization based on text length."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        matches = extractor.extract_replacements(original, corrected)
+        
+        if should_skip:
+            assert len(matches) == 0, f"{description}: Should skip sentence-start capital changes"
+        else:
+            assert len(matches) > 0, f"{description}: Should detect sentence-start capital changes"
+            # Verify the first match is about the first word
+            assert matches[0].offset == 0, f"{description}: First match should be at the start"
+
+    @pytest.mark.parametrize("original,corrected,num_tokens,should_skip,description", [
+        # Short text (< 5 tokens) - should skip
+        ("Item list", "Item list:", 2, True, "2 tokens - skip trailing colon"),
+        ("Here are the items", "Here are the items:", 4, True, "4 tokens - skip trailing colon"),
+        # Long text (>= 5 tokens) - should detect
+        ("Here is the list of items", "Here is the list of items:", 6, False, "6 tokens - detect trailing colon"),
+        ("This is a complete list of things", "This is a complete list of things:", 7, False, "7 tokens - detect trailing colon"),
+    ])
+    def test_heuristic_trailing_colon(self, original, corrected, num_tokens, should_skip, description):
+        """Test heuristic for trailing colon additions based on text length."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        matches = extractor.extract_replacements(original, corrected)
+        
+        if should_skip:
+            assert len(matches) == 0, f"{description}: Should skip trailing colon"
+        else:
+            assert len(matches) > 0, f"{description}: Should detect trailing colon"
+
+    @pytest.mark.parametrize("original,corrected,num_tokens,should_skip,description", [
+        # Short text (< 10 tokens) - should skip
+        ("This is short", "This is short.", 3, True, "3 tokens - skip trailing period"),
+        ("This is a somewhat longer sentence without period", "This is a somewhat longer sentence without period.", 9, True, "9 tokens - skip trailing period"),
+        # Long text (>= 10 tokens) - should detect
+        ("This is a complete sentence that is long enough to warrant a period", "This is a complete sentence that is long enough to warrant a period.", 14, False, "14 tokens - detect trailing period"),
+        ("This is indeed a very long sentence that should definitely have a period at the end", "This is indeed a very long sentence that should definitely have a period at the end.", 17, False, "17 tokens - detect trailing period"),
+    ])
+    def test_heuristic_trailing_period(self, original, corrected, num_tokens, should_skip, description):
+        """Test heuristic for trailing period additions based on text length."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        matches = extractor.extract_replacements(original, corrected)
+        
+        if should_skip:
+            assert len(matches) == 0, f"{description}: Should skip trailing period"
+        else:
+            assert len(matches) > 0, f"{description}: Should detect trailing period"
+
+    @pytest.mark.parametrize("original,corrected,description", [
+        # Emoji-only changes that should be skipped
+        ("Hello world", "Hello world 😊", "emoji addition"),
+        ("Hello world 😊", "Hello world", "emoji removal"),
+        ("Hello 😊", "Hello 😃", "emoji replacement"),
+        ("Great work", "Great work 🎉🎊", "multiple emoji addition"),
+        ("Test 🔥💯", "Test", "multiple emoji removal"),
+        ("[🟢emoji test]", "[emoji test]", "emoji removal from bracketed text"),
+        # ZWJ sequences (composite emojis)
+        ("Hello world", "Hello world 👨‍💻", "ZWJ sequence addition - man technologist"),
+        ("Team 👨‍💻", "Team", "ZWJ sequence removal"),
+        ("Flag 🏴‍☠️", "Flag", "ZWJ sequence removal - pirate flag"),
+        ("Family 👨‍👩‍👧‍👦", "Family", "complex ZWJ sequence removal"),
+        # Skin tone modifiers
+        ("Thanks", "Thanks 👍", "thumbs up without skin tone"),
+        ("Thanks", "Thanks 👍🏽", "thumbs up with skin tone"),
+        ("Thanks 👍", "Thanks 👍🏽", "skin tone change"),
+        ("Thanks 👍🏻", "Thanks 👍🏿", "different skin tone"),
+        # Variation selectors (emoji vs text presentation)
+        ("Note", "Note ✅", "check mark emoji"),
+        ("Hearts ❤️", "Hearts", "red heart with variation selector"),
+        # Modern emojis (newer Unicode versions)
+        ("Mood", "Mood 🫠", "melting face (Unicode 14)"),
+        ("Salute 🫡", "Salute", "saluting face (Unicode 14)"),
+        ("Love 🫶", "Love", "heart hands (Unicode 14)"),
+    ])
+    def test_heuristic_skip_emoji_only_changes(self, original, corrected, description):
+        """Test that emoji-only changes are skipped."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        matches = extractor.extract_replacements(original, corrected)
+        
+        # Should skip emoji-only changes
+        assert len(matches) == 0, f"Should skip {description}"
+
+    def test_heuristic_allow_text_with_emoji_changes(self):
+        """Test that changes including both text and emoji are not skipped."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        
+        # Test text change that also modifies emoji
+        original = "I are happy"
+        corrected = "I am happy 😊"  # Fix grammar AND add emoji
+        
+        matches = extractor.extract_replacements(original, corrected)
+        
+        # Should detect the grammar error (not skip because there's text change too)
+        # The exact number may vary, but there should be at least one match for "are" -> "am"
+        grammar_matches = [m for m in matches if 'are' in original[m.offset:m.offset + m.length].lower()]
+        assert len(grammar_matches) > 0, "Should detect grammar errors even when emoji is also present"
+
+    @pytest.mark.parametrize("original,corrected,description", [
+        # Multiple heuristics (capitalization + period on short text)
+        ("test item", "Test item.", "capital + period on 2 tokens"),
+        ("hello world", "Hello world.", "capital + period on 2 tokens"),
+        # Multiple heuristics (capitalization + colon on short text)
+        ("item list", "Item list:", "capital + colon on 2 tokens"),
+    ])
+    def test_heuristic_multiple_heuristics_combined(self, original, corrected, description):
+        """Test behavior when multiple heuristics could apply."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        matches = extractor.extract_replacements(original, corrected)
+        
+        # Multiple heuristics should fire - no matches
+        assert len(matches) == 0, f"Should skip when multiple heuristics apply: {description}"
+
+    @pytest.mark.parametrize("original,corrected,description", [
+        # Mid-sentence changes on short text
+        ("item list here", "item lists here", "plural change in middle - 3 tokens"),
+        ("go back", "goes back", "verb change in middle - 2 tokens"),
+        ("the big dog", "the bigger dog", "adjective change in middle - 3 tokens"),
+    ])
+    def test_heuristic_mid_sentence_changes_not_affected(self, original, corrected, description):
+        """Test that heuristics don't affect mid-sentence changes."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        matches = extractor.extract_replacements(original, corrected)
+        
+        # Should detect the mid-sentence change (not affected by start/end heuristics)
+        assert len(matches) > 0, f"Should detect mid-sentence changes: {description}"

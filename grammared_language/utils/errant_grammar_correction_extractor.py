@@ -248,6 +248,8 @@ class ErrantGrammarCorrectionExtractor:
                 "\U0001F600-\U0001F64F"  # emoticons
                 "\U0001F300-\U0001F5FF"  # symbols & pictographs
                 "\U0001F680-\U0001F6FF"  # transport & map symbols
+                "\U0001F700-\U0001F77F"  # alchemical symbols
+                "\U0001F780-\U0001F7FF"  # geometric shapes extended
                 "\U0001F1E0-\U0001F1FF"  # flags (iOS)
                 "\U00002500-\U00002BEF"  # chinese characters
                 "\U00002702-\U000027B0"
@@ -257,6 +259,9 @@ class ErrantGrammarCorrectionExtractor:
                 "\U0001FA70-\U0001FAFF"  # symbols and pictographs extended-a
                 "\U00002600-\U000026FF"  # miscellaneous symbols
                 "\U00002300-\U000023FF"  # miscellaneous technical
+                "\u200D"  # zero-width joiner (ZWJ)
+                "\uFE0E\uFE0F"  # variation selectors
+                "\U0001F3FB-\U0001F3FF"  # skin tone modifiers
                 "]+", flags=re.UNICODE
             )
             return emoji_pattern.sub('', text)
