@@ -379,6 +379,28 @@ class TestErrantGrammarCorrectionExtractor:
         assert len(grammar_matches) > 0, "Should detect grammar errors even when emoji is also present"
 
     @pytest.mark.parametrize("original,corrected,description", [
+        # Whitespace changes with emoji should be ignored
+        ("🟢emoji test", " emoji test", "leading space added with emoji removal"),
+        ("🟢emoji test", "emoji test ", "trailing space added with emoji removal"),
+        # ("🟢emoji test", "Emoji test ", "capitalization, trailing space added with emoji removal"),
+        ("Mood🫠", "Mood ", "emoji removed, space added"),
+        ("Mood 🫠", "Mood", "emoji and space removed"),
+        ("Mood 🫠", "Mood ", "emoji removed, space kept"),
+        ("🟢 test", "test", "emoji and space both removed"),
+        ("test 🟢", "test", "trailing emoji removed"),
+        ("test  🟢", "test", "emoji with multiple spaces"),
+        (" 🟢emoji", "emoji", "leading space + emoji removed"),
+        ("text 🟢 more", "text more", "emoji with surrounding spaces removed"),
+    ])
+    def test_heuristic_skip_emoji_with_whitespace_changes(self, original, corrected, description):
+        """Test that emoji removal with whitespace changes is still considered emoji-only."""
+        extractor = ErrantGrammarCorrectionExtractor()
+        matches = extractor.extract_replacements(original, corrected)
+        
+        # Should skip emoji+whitespace-only changes
+        assert len(matches) == 0, f"Should skip {description}"
+
+    @pytest.mark.parametrize("original,corrected,description", [
         # Multiple heuristics (capitalization + period on short text)
         ("test item", "Test item.", "capital + period on 2 tokens"),
         ("hello world", "Hello world.", "capital + period on 2 tokens"),

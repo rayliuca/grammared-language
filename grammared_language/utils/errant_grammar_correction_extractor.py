@@ -238,7 +238,7 @@ class ErrantGrammarCorrectionExtractor:
             corrected: Corrected text
             
         Returns:
-            True if the difference is only emoji, False otherwise
+            True if the difference is only emoji (and whitespace), False otherwise
         """
         # Remove all emoji from both strings
         def remove_emoji(text: str) -> str:
@@ -266,8 +266,15 @@ class ErrantGrammarCorrectionExtractor:
             )
             return emoji_pattern.sub('', text)
         
-        # If both strings are the same after removing emoji, the difference is only emoji
-        return remove_emoji(original) == remove_emoji(corrected)
+        # Remove emojis and normalize whitespace (strip and collapse multiple spaces)
+        def normalize(text: str) -> str:
+            text_no_emoji = remove_emoji(text)
+            # Normalize whitespace: strip and collapse multiple spaces to single space
+            return ' '.join(text_no_emoji.split())
+        
+        # If both strings are the same after removing emoji and normalizing whitespace,
+        # the difference is only emoji (and possibly whitespace around emojis)
+        return normalize(original) == normalize(corrected)
 
     def _fix_tokenization_mistakes(self, text: str) -> str:
         """
