@@ -92,6 +92,16 @@ class ErrantGrammarCorrectionExtractor:
             if (num_tokens < 7 and edit.o_start == 0 and edit.o_str.lower() == edit.c_str.lower()):
                 continue
             
+            # heuristic to avoid over correction of trailing `:`
+            # Skip trailing colon additions/changes if text is less than 5 tokens
+            if num_tokens < 5 and ':' in edit.c_str and edit.o_end == num_tokens:
+                continue
+            
+            # heuristic to avoid over correction of trailing `.`
+            # Skip trailing period additions/changes if text is less than 10 tokens
+            if num_tokens < 10 and '.' in edit.c_str and edit.o_end == num_tokens:
+                continue
+            
             # Convert token indices to character indices
             offset, length = self._token_span_to_char_span(
                 orig_parsed, edit.o_start, edit.o_end
