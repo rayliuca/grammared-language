@@ -102,6 +102,10 @@ class ErrantGrammarCorrectionExtractor:
             if num_tokens < 10 and '.' in edit.c_str and edit.o_end == num_tokens:
                 continue
             
+            # Skip emoji-only changes (model cannot correct emoji properly)
+            if self._is_emoji_only_change(edit.o_str, edit.c_str):
+                continue
+            
             # Convert token indices to character indices
             offset, length = self._token_span_to_char_span(
                 orig_parsed, edit.o_start, edit.o_end
@@ -224,6 +228,41 @@ class ErrantGrammarCorrectionExtractor:
         # Edge case: empty document or single insertion
         # Return the insertion at position 0
         return 0, 0, inserted_text
+
+    def _is_emoji_only_change(self, original: str, corrected: str) -> bool:
+        """
+        Check if the difference between original and corrected is only emoji.
+        
+        Args:
+            original: Original text
+            corrected: Corrected text
+            
+        Returns:
+            True if the difference is only emoji, False otherwise
+        """
+        # Remove all emoji from both strings
+        def remove_emoji(text: str) -> str:
+            # Emoji unicode ranges (comprehensive pattern)
+            emoji_pattern = re.compile(
+                "["
+                "\U0001F600-\U0001F64F"  # emoticons
+                "\U0001F300-\U0001F5FF"  # symbols & pictographs
+                "\U0001F680-\U0001F6FF"  # transport & map symbols
+                "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                "\U00002500-\U00002BEF"  # chinese characters
+                "\U00002702-\U000027B0"
+                "\U000024C2-\U0001F251"
+                "\U0001F900-\U0001F9FF"  # supplemental symbols and pictographs
+                "\U0001FA00-\U0001FA6F"  # chess symbols
+                "\U0001FA70-\U0001FAFF"  # symbols and pictographs extended-a
+                "\U00002600-\U000026FF"  # miscellaneous symbols
+                "\U00002300-\U000023FF"  # miscellaneous technical
+                "]+", flags=re.UNICODE
+            )
+            return emoji_pattern.sub('', text)
+        
+        # If both strings are the same after removing emoji, the difference is only emoji
+        return remove_emoji(original) == remove_emoji(corrected)
 
     def _fix_tokenization_mistakes(self, text: str) -> str:
         """
