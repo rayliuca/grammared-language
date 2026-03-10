@@ -94,12 +94,21 @@ class ErrantGrammarCorrectionExtractor:
             
             # heuristic to avoid over correction of trailing `:`
             # Skip trailing colon additions/changes if text is less than 5 tokens
-            if num_tokens < 5 and ':' in edit.c_str and edit.o_end == num_tokens:
+            # But allow corrections if the original already has a `:`
+            if num_tokens < 5 and edit.c_str.endswith(':') and edit.o_end == num_tokens and not edit.o_str.endswith(':'):
                 continue
             
             # heuristic to avoid over correction of trailing `.`
             # Skip trailing period additions/changes if text is less than 10 tokens
             if num_tokens < 10 and '.' in edit.c_str and edit.o_end == num_tokens:
+                continue
+            
+            # heuristic to avoid over correction of trailing spaces replaced with `:`
+            # ML models are prone to suggest `:` at the end when users are still typing
+            if (edit.o_end == num_tokens and 
+                original.rstrip() != original and  # has trailing spaces
+                edit.c_str.endswith(':') and 
+                edit.o_str.strip() == ''):  # original part is just spaces
                 continue
             
             # Skip emoji-only changes (model cannot correct emoji properly)
