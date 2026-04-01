@@ -106,6 +106,13 @@ services:
       - ./example_language_tool_configs/remote-rule-config.json:/remote-rule-config.json:ro
     networks:
       - grammared-network
+  restarter:
+    image: docker:cli
+    volumes: [ "/var/run/docker.sock:/var/run/docker.sock" ]
+    # restart languagetool every 12 hours to prevent memory leaks
+    command: [ "/bin/sh", "-c", "while true; do sleep 43200; docker restart languagetool; done" ]
+    restart: unless-stopped
+
 networks:
   grammared-network:
     # driver: bridge
